@@ -150,7 +150,6 @@
         content: |
           # Use port 5555 because 80/443 are taken by the HPC Nginx proxy
           port: {{ ood_port }}
-          
           # Server Name
           servername: '{{ ood_domain }}'
           
