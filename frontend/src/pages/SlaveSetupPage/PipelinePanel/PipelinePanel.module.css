@@ -1,0 +1,212 @@
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-top: 4px solid var(--accent-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  position: sticky;
+  top: 100px;
+  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.3), inset 0 1px 0 hsla(0, 0%, 100%, 0.05);
+}
+
+/* Launch Block */
+.launchBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.launchTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.launchDesc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-xs);
+}
+
+.launchBtn {
+  background: linear-gradient(135deg, var(--accent-secondary) 0%, hsl(168, 80%, 35%) 100%);
+  color: var(--text-inverse);
+  border: none;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 750;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 0 4px 12px hsl(168, 80%, 42%, 0.2);
+}
+
+.launchBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px hsl(168, 80%, 42%, 0.3);
+}
+
+.launchBtnBusy {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-accent);
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.launchBtnDone {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-secondary);
+  color: var(--accent-secondary);
+  box-shadow: none;
+}
+
+/* Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 0;
+}
+
+/* Steps Block */
+.stepsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.stepsLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  list-style: none;
+}
+
+.stepItem {
+  display: flex;
+  gap: var(--space-md);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.stepItem.status_running,
+.stepItem.status_success,
+.stepItem.status_failed {
+  opacity: 1;
+}
+
+.stepLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 20px;
+}
+
+.stepNum {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.statusIcon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.icon_idle { color: var(--text-muted); }
+.icon_running { color: var(--accent-primary); animation: pulse 1.5s infinite; }
+.icon_success { color: var(--accent-secondary); }
+.icon_failed { color: var(--accent-danger); }
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+.stepRight {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.stepLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stepDetail {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.stepMessage {
+  font-size: 0.75rem;
+  color: var(--accent-secondary);
+  font-family: var(--font-mono);
+  margin-top: 4px;
+  background: hsl(168, 80%, 42%, 0.1);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid hsl(168, 80%, 42%, 0.2);
+}
+
+/* Guide */
+.guide {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.guideTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.guideList {
+  padding-left: var(--space-md);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

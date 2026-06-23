@@ -1,0 +1,108 @@
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: hsl(222, 22%, 8%, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-xl);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+/* Brand */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brandIcon {
+  font-size: 1.4rem;
+  color: var(--accent-primary);
+  line-height: 1;
+  filter: drop-shadow(0 0 8px hsl(207,90%,54%,0.6));
+}
+
+.brandText {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.brandAccent {
+  color: var(--accent-primary);
+}
+
+/* Links */
+.links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  list-style: none;
+  flex: 1;
+}
+
+.link {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.link:hover {
+  color: var(--text-primary);
+  background: var(--border-subtle);
+}
+
+.linkActive {
+  color: var(--accent-primary);
+  background: var(--accent-primary-dim);
+}
+
+.linkActive:hover {
+  color: var(--accent-primary);
+  background: var(--accent-primary-dim);
+}
+
+/* Status indicator */
+.statusWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  margin-left: auto;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.statusLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

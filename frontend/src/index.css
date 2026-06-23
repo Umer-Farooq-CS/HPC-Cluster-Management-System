@@ -1,0 +1,181 @@
+/* ============================================================
+   HPC Cluster Management System — Global Design System
+   ============================================================ */
+
+/* --- Font & Box Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- CSS Custom Properties (Design Tokens) --- */
+:root {
+  /* Color Palette — Dark HPC Aesthetic */
+  --bg-base:        hsl(222, 22%, 8%);
+  --bg-surface:     hsl(222, 20%, 11%);
+  --bg-card:        hsl(222, 18%, 14%);
+  --bg-card-hover:  hsl(222, 18%, 17%);
+  --bg-input:       hsl(222, 20%, 10%);
+
+  --border-subtle:  hsl(222, 15%, 20%);
+  --border-accent:  hsl(222, 15%, 28%);
+  
+  /* Glassmorphism */
+  --glass-bg:       hsl(222, 20%, 15%, 0.4);
+  --glass-border:   hsl(222, 15%, 35%, 0.3);
+  --glass-shadow:   0 8px 32px 0 hsla(222, 22%, 4%, 0.5);
+
+  /* Brand Colors */
+  --accent-primary:   hsl(207, 90%, 54%);   /* Electric Blue */
+  --accent-secondary: hsl(168, 80%, 42%);   /* Teal Green */
+  --accent-warning:   hsl(38, 92%, 58%);    /* Amber */
+  --accent-danger:    hsl(0, 75%, 58%);     /* Red */
+
+  --accent-primary-dim:   hsl(207, 90%, 54%, 0.12);
+  --accent-secondary-dim: hsl(168, 80%, 42%, 0.12);
+
+  /* Text */
+  --text-primary:   hsl(220, 15%, 92%);
+  --text-secondary: hsl(220, 10%, 60%);
+  --text-muted:     hsl(220, 10%, 40%);
+  --text-inverse:   hsl(222, 22%, 8%);
+
+  /* Gradients */
+  --gradient-hero: linear-gradient(135deg, hsl(222,22%,8%) 0%, hsl(230,25%,12%) 100%);
+  --gradient-card-master: linear-gradient(135deg, hsl(207,90%,14%) 0%, hsl(222,18%,14%) 100%);
+  --gradient-card-slave:  linear-gradient(135deg, hsl(168,60%,10%) 0%, hsl(222,18%,14%) 100%);
+  --gradient-glow-blue:   radial-gradient(ellipse 80% 60% at 50% 0%, hsl(207,90%,54%,0.12), transparent);
+  --gradient-glow-teal:   radial-gradient(ellipse 80% 60% at 50% 0%, hsl(168,80%,42%,0.10), transparent);
+
+  /* Spacing */
+  --space-xs:  0.25rem;
+  --space-sm:  0.5rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* Typography */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Borders & Radius */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  16px;
+  --radius-xl:  24px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px hsl(222,22%,4%,0.6);
+  --shadow-glow-blue: 0 0 40px hsl(207,90%,54%,0.18);
+  --shadow-glow-teal: 0 0 40px hsl(168,80%,42%,0.15);
+  --shadow-button: 0 4px 16px hsl(207,90%,54%,0.35);
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* --- Base Typography --- */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Utility Classes --- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* --- Scrollbar Styling --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+
+/* --- Advanced Utilities --- */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-lg);
+}
+
+/* --- Toggle Switch Styling --- */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-muted);
+  transition: .3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+  background-color: #fff;
+}
+
+.toggle-switch input:focus + .toggle-slider {
+  box-shadow: 0 0 1px var(--accent-primary);
+}

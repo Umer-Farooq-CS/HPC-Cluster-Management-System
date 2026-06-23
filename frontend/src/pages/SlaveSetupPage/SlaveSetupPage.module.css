@@ -1,0 +1,138 @@
+/* ====================================================
+   SlaveSetupPage Container — Styles
+   ==================================================== */
+
+.page {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-xl) var(--space-3xl);
+  background: var(--bg-base);
+}
+
+.inner {
+  max-width: 1300px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* ── Header & Stepper ───────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.back {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--space-md);
+  transition: color var(--transition-fast);
+}
+
+.back:hover {
+  color: var(--accent-secondary);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--accent-secondary-dim);
+  border: 1px solid hsl(168, 80%, 42%, 0.25);
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--accent-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.subtitle {
+  font-size: 0.925rem;
+  color: var(--text-secondary);
+  max-width: 800px;
+  line-height: 1.6;
+}
+
+/* Stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+  border-bottom: 1px solid var(--border-accent);
+  width: 100%;
+}
+
+.stepIndicator {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: var(--space-sm) var(--space-xs);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all var(--transition-fast);
+}
+
+.stepIndicator:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.stepActive {
+  color: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+}
+
+.stepChevron {
+  color: var(--border-accent);
+  font-size: 0.8rem;
+}
+
+/* ── Layout Grid ────────────────────────────────── */
+.layoutGrid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-2xl);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .layoutGrid {
+    grid-template-columns: 1fr 320px;
+  }
+}
+
+@media (max-width: 900px) {
+  .layoutGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mainCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.sideCol {
+  display: flex;
+  flex-direction: column;
+}

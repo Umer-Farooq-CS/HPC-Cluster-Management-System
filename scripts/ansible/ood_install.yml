@@ -1,0 +1,179 @@
+---
+- name: Install and Configure Open OnDemand
+  hosts: localhost
+  connection: local
+  become: yes
+  vars:
+    ood_domain: "192.168.10.2"
+    ood_port: "8008"
+    keycloak_realm: "hpc"
+    keycloak_client_id: "open-ondemand"
+    slurm_cluster_name: "my_cluster"
+
+  tasks:
+    - name: Ensure Slurm and SlurmDBD are active (mock check or real)
+      systemd:
+        name: slurmctld
+        state: started
+      ignore_errors: yes
+
+    - name: Install EPEL release
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: Allow SHA1 crypto policy for legacy GPG keys (AlmaLinux 9)
+      command: update-crypto-policies --set DEFAULT:SHA1
+      when: ansible_distribution_major_version == '9'
+
+    - name: Import OSC RPM-GPG-KEY
+      rpm_key:
+        state: present
+        key: https://yum.osc.edu/ondemand/RPM-GPG-KEY-ondemand
+
+
+    - name: Install OOD Repository for EL9
+      dnf:
+        name: https://yum.osc.edu/ondemand/4.2/ondemand-release-web-4.2-1.el9.noarch.rpm
+        state: present
+        disable_gpg_check: yes
+      when: ansible_distribution_major_version == '9'
+
+    - name: Install OOD Repository for EL8
+      dnf:
+        name: https://yum.osc.edu/ondemand/4.2/ondemand-release-web-4.2-1.el8.noarch.rpm
+        state: present
+        disable_gpg_check: yes
+      when: ansible_distribution_major_version == '8'
+
+    - name: Enable required Node.js and Ruby modules for OOD 4.2 (AlmaLinux 9)
+      command: dnf module enable -y nodejs:22 ruby:3.3
+      when: ansible_distribution_major_version == '9'
+
+    - name: Install Open OnDemand package and OIDC module
+      dnf:
+        name:
+          - ondemand
+          - mod_auth_openidc
+        state: present
+
+    - name: Create cluster config directory
+      file:
+        path: /etc/ood/config/clusters.d
+        state: directory
+        mode: '0755'
+
+    - name: Configure Slurm Cluster for OOD
+      copy:
+        dest: /etc/ood/config/clusters.d/{{ slurm_cluster_name }}.yml
+        content: |
+          v2:
+            metadata:
+              title: "HPC Local Cluster"
+            login:
+              host: "localhost"
+            job:
+              adapter: "slurm"
+              cluster: "{{ slurm_cluster_name }}"
+              bin: "/usr/bin"
+              conf: "/etc/slurm/slurm.conf"
+
+    # Automate Keycloak Client Creation via docker exec kcadm.sh
+    - name: Authenticate Keycloak kcadm.sh
+      shell: |
+        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+          --server http://localhost:8080 \
+          --realm master \
+          --user admin \
+          --password admin
+      register: kc_auth
+      changed_when: false
+
+    - name: Check if open-ondemand client exists
+      shell: |
+        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }}
+      register: kc_clients
+      changed_when: false
+
+    - name: Create open-ondemand client if not exists
+      shell: |
+        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh create clients -r {{ keycloak_realm }} \
+          -s clientId={{ keycloak_client_id }} \
+          -s enabled=true \
+          -s clientAuthenticatorType=client-secret \
+          -s standardFlowEnabled=true \
+          -s implicitFlowEnabled=false \
+          -s directAccessGrantsEnabled=true \
+          -s serviceAccountsEnabled=true \
+          -s "redirectUris=[\"http://{{ ood_domain }}:{{ ood_port }}/*\"]" \
+          -s "webOrigins=[\"+\"]"
+      when: (kc_clients.stdout | from_json | length) == 0
+
+    - name: Get Keycloak Client Secret
+      shell: |
+        CID=$(docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }} | grep -o '"id" : "[^"]*' | head -n 1 | cut -d '"' -f 4)
+        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients/$CID/client-secret -r {{ keycloak_realm }} | grep -o '"value" : "[^"]*' | cut -d '"' -f 4
+      register: kc_secret_out
+      changed_when: false
+
+    - name: Set Keycloak Client Secret Fact
+      set_fact:
+        kc_secret: "{{ kc_secret_out.stdout }}"
+
+    - name: Configure OOD Portal (ood_portal.yml)
+      copy:
+        dest: /etc/ood/config/ood_portal.yml
+        content: |
+          # Use port 5555 because 80/443 are taken by the HPC Nginx proxy
+          port: {{ ood_port }}
+          
+          # Server Name
+          servername: '{{ ood_domain }}'
+          
+          # Authentication configuration
+          auth:
+            - 'AuthType openid-connect'
+            - 'Require valid-user'
+          
+          # OIDC Settings
+          oidc_uri: '/oidc'
+          oidc_provider_metadata_url: 'http://{{ ood_domain }}:8080/realms/{{ keycloak_realm }}/.well-known/openid-configuration'
+          oidc_client_id: '{{ keycloak_client_id }}'
+          oidc_client_secret: '{{ kc_secret }}'
+          oidc_remote_user_claim: 'preferred_username'
+          
+          # Since Keycloak is on the same host but via docker, using HTTP to Keycloak
+          # Disable SSL validation for OIDC if not using HTTPS for Keycloak
+          oidc_settings:
+            OIDCSSLValidateServer: 'Off'
+
+    - name: Update OOD Portal Apache Config
+      command: /opt/ood/ood-portal-generator/sbin/update_ood_portal
+
+    - name: Remove default Listen 80 from Apache to avoid conflict with Nginx
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen 80'
+        state: absent
+
+    - name: Remove default Listen 443 from Apache SSL config to avoid conflict with Nginx
+      lineinfile:
+        path: /etc/httpd/conf.d/ssl.conf
+        regexp: '^Listen 443'
+        state: absent
+
+    - name: Explicitly add Listen for OOD port
+      copy:
+        dest: /etc/httpd/conf.d/ood-listen.conf
+        content: |
+          Listen {{ ood_port }}
+
+    - name: Enable and restart HTTPD (Apache for OOD)
+      systemd:
+        name: httpd
+        state: restarted
+        enabled: yes
+
+    - name: Restore default crypto policy (AlmaLinux 9)
+      command: update-crypto-policies --set DEFAULT
+      when: ansible_distribution_major_version == '9'

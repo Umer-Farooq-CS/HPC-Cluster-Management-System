@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: hpc-postgres
+    environment:
+      POSTGRES_DB: hpc_cluster
+      POSTGRES_USER: hpc_admin
+      POSTGRES_PASSWORD: hpc_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: hpc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: hpc-keycloak
+    environment:
+      # Keycloak Database Settings
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/hpc_cluster
+      KC_DB_USERNAME: hpc_admin
+      KC_DB_PASSWORD: hpc_password
+      # Initial Admin User
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Host settings
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      # Nginx Proxy Settings
+      KC_PROXY_HEADERS: "xforwarded"
+      KC_HOSTNAME: ${DOMAIN}
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: hpc-backend
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - keycloak
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=http://${DOMAIN}:8000/api/v1
+        - VITE_WS_URL=ws://${DOMAIN}:8000/api/v1
+    container_name: hpc-frontend
+    env_file: .env
+    depends_on:
+      - backend
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: hpc-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+networks:
+  hpc-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

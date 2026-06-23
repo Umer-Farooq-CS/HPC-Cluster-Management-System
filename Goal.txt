@@ -1,0 +1,51 @@
+Here is the corrected, comprehensive summary of your production-grade **HPC Cluster Management Web Application**, followed by the specific architectural decisions that are currently pending.
+
+---
+
+## Technical Architecture Summary
+
+### 1. The Core Infrastructure (The Underbelly)
+
+* **Physical & Networking Layer:** Powered by a D-Link DGS-1016D unmanaged internal switch. The compute nodes (`pc2` and `pc3`) are wired directly to this switch on an isolated `192.168.20.x` subnet.
+* **Stateless Provisioning Layer:** Utilizing **Warewulf 4** to PXE boot a minimal **AlmaLinux 9** image completely into the RAM of the compute nodes. Node states (Munge cryptographic keys, network maps, and `slurm.conf`) are dynamically injected via Warewulf system overlays during boot.
+* **Workload Management & Accounting:** Controlled by a fully synchronized **Slurm** environment. The `slurmctld` (controller) daemon and a persistent **MariaDB** database (`slurmdbd`) handle job scheduling, fair-share rules, and historical accounting logs from the Master node.
+
+### 2. The Web Application & Orchestration Stack
+
+* **The Frontend GUI:** Built on **React + TypeScript (Vite)** to handle real-time rendering of heavy cluster logs and job queues without interface lag, processing all visual data directly on the client's local machine.
+* **The Backend Control Plane:** Powered by **FastAPI** (wrapped in Gunicorn/Uvicorn), acting as the direct bridge between user actions and Slurm commands.
+* **The Production Security Wrapper:** Hardened by **Nginx** acting as a reverse proxy/gateway to manage TLS termination (HTTPS) and serve static frontend files. **Keycloak** handles enterprise Identity & Access Management (IAM), forcing Multi-Factor Authentication (MFA) and strict Role-Based Access Control (RBAC) via cryptographically signed JWT tokens.
+* **The Performance Guard:** A dedicated **PostgreSQL** database handles web application states (user accounts, saved setups, audit trails). An in-memory **Redis** cache acts as a shield, preventing frequent web UI refreshing from spamming the core `slurmctld` daemon with status queries.
+
+### 3. The Dynamic Cluster Bootstrapper
+
+* **The Feature:** A built-in "Cluster Setup Wizard" capable of taking a fresh, clean PC running a minimal OS and completely configuring it into an HPC Master node via automated, asynchronous SSH execution.
+* **The Pipeline:** Executes in strict phases: Auditing the target system $\rightarrow$ isolating network configurations to prevent leaks $\rightarrow$ deploying packages (Warewulf, Slurm, MariaDB) $\rightarrow$ initializing the cluster configuration.
+
+---
+
+## Open Decisions (The Roadmap Backlog)
+
+To move this from a blueprint to an active codebase, the following **three critical decisions** must be finalized:
+
+### Decision 1: The Single Ethernet Port & DHCP Resolution
+
+Because the Master Node currently only has one built-in ethernet port, you cannot plug the external network directly into your D-Link switch without causing a "Rogue DHCP" network collision that could trigger a port block from your campus IT.
+
+* *Option A (Recommended):* Acquire a **USB-to-Ethernet adapter** or PCIe network card to give the Master node a physical dual-homed boundary (Port 1 = Campus network, Port 2 = Isolated D-Link switch).
+* *Option B (Zero Budget - Wireless):* Bind the Master node's built-in **Wi-Fi interface** to the external campus network for user access, reserving the single physical ethernet port exclusively for the internal D-Link switch network.
+* *Option C (Zero Budget - Hardware):* Use a **spare consumer router** as an intermediary hardware firewall between the campus wall outlet and your D-Link switch, disabling the router's internal DHCP.
+
+### Decision 2: The Bootstrapping Execution Environment
+
+You must decide where the web application code will physically execute *before* the destination Master Node has been built.
+
+* *Option A (The Laptop Seed):* Run the FastAPI backend and React frontend locally on your personal laptop. Use your laptop to target the blank machine over the network via SSH, run the full installation, and then permanently migrate the web app code over to the newly built Master node.
+* *Option B (Self-Bootstrapping):* Manually clone the repository directly onto the fresh, target machine, launch the FastAPI core locally on that machine, and let it run automation scripts on *itself* (`localhost`) to finish its own cluster configuration.
+
+### Decision 3: Automation Script Tooling Choice
+
+You need to select the engine that your FastAPI backend will trigger in the background to run the automated SSH provisioning commands.
+
+* *Option A (Pure Python Async):* Use an asynchronous Python library like `asyncssh` or `Paramiko` to handle sequential terminal commands, package injections, and configuration file writes directly in Python code.
+* *Option B (Ansible Integration):* Use `Ansible Runner` inside FastAPI to call pre-written Ansible playbooks, giving you access to built-in idempotency checks and standardized systems management modules.

@@ -1,0 +1,62 @@
+---
+- name: Validate Master Node Control Plane
+  hosts: master
+  connection: local # Runs locally on the master node
+  become: yes
+  tasks:
+    - name: Ensure critical master services are running
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - mariadb
+        - slurmdbd
+        - warewulfd
+        - slurmctld
+        - munge
+        - chronyd
+
+    - name: Verify Slurm accounting database is accessible
+      ansible.builtin.command: sacctmgr show cluster format=Cluster -P --noheader
+      register: sacctmgr_output
+      changed_when: false
+      failed_when: sacctmgr_output.stdout == ''
+      ignore_errors: yes # Warn if accounting isn't fully configured yet
+
+    - name: Verify Slurm compute nodes are recognized
+      ansible.builtin.command: sinfo --noheader -o "%T"
+      register: sinfo_output
+      changed_when: false
+      failed_when: "'down' in sinfo_output.stdout or 'drain' in sinfo_output.stdout"
+      ignore_errors: yes # Don't fail the whole playbook just yet if nodes are still booting
+
+- name: Validate Stateless Compute Nodes
+  hosts: compute
+  become: yes
+  tasks:
+    - name: Ensure compute node services are running
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - slurmd
+        - munge
+        - chronyd
+
+    - name: Verify memory limits are unlimited (For MPI)
+      ansible.builtin.shell: ulimit -l
+      register: memlock_limit
+      changed_when: false
+      failed_when: "'unlimited' not in memlock_limit.stdout"
+
+    - name: Verify cluster connectivity (Test Slurm Job)
+      ansible.builtin.command: srun -N 1 hostname
+      register: srun_output
+      changed_when: false
+      delegate_to: 192.168.10.2 # Delegate submission to the master node
+      run_once: true
+
+    - name: Print Test Job Output
+      ansible.builtin.debug:
+        msg: "Slurm test job succeeded! Executed on node: {{ srun_output.stdout }}"
+      run_once: true
