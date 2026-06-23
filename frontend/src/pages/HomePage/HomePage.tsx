@@ -72,6 +72,25 @@ const PROVISION_CARDS: ProvisionCard[] = [
       'Shell Access',
     ],
   },
+  {
+    id: 'ansible',
+    title: 'Ansible Runner',
+    subtitle: 'Run Playbooks',
+    description:
+      'Dynamically discover and run infrastructure automation playbooks directly from the GUI, with real-time terminal output streaming.',
+    icon: '⚙️',
+    badge: 'Automation',
+    route: '/ansible',
+    gradient: 'slave',
+    glowClass: 'glowTeal',
+    steps: [
+      'Discover playbooks',
+      'Select script',
+      'Execute via SSH',
+      'Stream live logs',
+      'Verify results',
+    ],
+  },
 ]
 
 export default function HomePage() {

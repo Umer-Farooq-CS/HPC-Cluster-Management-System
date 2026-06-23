@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from api.routes import slaves
 from api.routes import images
+from api.routes import ansible
 from core.config import settings
 
 from contextlib import asynccontextmanager
@@ -47,6 +48,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Include Routers
 app.include_router(slaves.router, prefix="/api/v1/slaves", tags=["slaves"])
 app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
+app.include_router(ansible.router, prefix="/api/v1/ansible", tags=["ansible"])
 
 @app.get("/")
 def read_root():

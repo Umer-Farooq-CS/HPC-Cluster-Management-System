@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage/HomePage'
 import MasterSetupPage from './pages/MasterSetupPage/MasterSetupPage'
 import SlaveSetupPage from './pages/SlaveSetupPage/SlaveSetupPage'
 import DashboardPage from './pages/DashboardPage/DashboardPage'
+import AnsibleRunnerPage from './pages/AnsibleRunnerPage/AnsibleRunnerPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <Route path="provision/master" element={<MasterSetupPage />} />
         <Route path="provision/slave" element={<SlaveSetupPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="ansible" element={<AnsibleRunnerPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

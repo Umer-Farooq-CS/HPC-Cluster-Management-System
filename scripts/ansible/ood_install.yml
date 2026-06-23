@@ -109,6 +109,13 @@
           -s "webOrigins=[\"+\"]"
       when: (kc_clients.stdout | from_json | length) == 0
 
+    - name: Update open-ondemand client if exists
+      shell: |
+        CID=$(docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }} | grep -o '"id" : "[^"]*' | head -n 1 | cut -d '"' -f 4)
+        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh update clients/$CID -r {{ keycloak_realm }} \
+          -s "redirectUris=[\"http://{{ ood_domain }}:{{ ood_port }}/*\"]"
+      when: (kc_clients.stdout | from_json | length) > 0
+
     - name: Get Keycloak Client Secret
       shell: |
         CID=$(docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }} | grep -o '"id" : "[^"]*' | head -n 1 | cut -d '"' -f 4)
