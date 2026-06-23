@@ -144,7 +144,7 @@
           
           # OIDC Settings
           oidc_uri: '/oidc'
-          oidc_provider_metadata_url: 'http://{{ ood_domain }}:8080/realms/{{ keycloak_realm }}/.well-known/openid-configuration'
+          oidc_provider_metadata_url: 'https://{{ ood_domain }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration'
           oidc_client_id: '{{ keycloak_client_id }}'
           oidc_client_secret: '{{ kc_secret }}'
           oidc_remote_user_claim: 'preferred_username'
