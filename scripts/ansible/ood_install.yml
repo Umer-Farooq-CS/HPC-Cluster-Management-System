@@ -54,6 +54,7 @@
       dnf:
         name:
           - ondemand
+          - ondemand-selinux
           - mod_auth_openidc
         state: present
 
