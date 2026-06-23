@@ -168,6 +168,12 @@
         content: |
           Listen {{ ood_port }}
 
+    - name: Allow Apache to connect to Keycloak via network (SELinux)
+      seboolean:
+        name: httpd_can_network_connect
+        state: yes
+        persistent: yes
+
     - name: Enable and restart HTTPD (Apache for OOD)
       systemd:
         name: httpd
