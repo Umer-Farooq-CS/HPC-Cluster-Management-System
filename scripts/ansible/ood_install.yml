@@ -8,7 +8,7 @@
     ood_port: "8008"
     keycloak_realm: "hpc"
     keycloak_client_id: "open-ondemand"
-    slurm_cluster_name: "my_cluster"
+    slurm_cluster_name: "hpc-cluster"
 
   tasks:
     - name: Ensure Slurm and SlurmDBD are active (mock check or real)
@@ -79,54 +79,70 @@
               bin: "/usr/bin"
               conf: "/etc/slurm/slurm.conf"
 
-    # Automate Keycloak Client Creation via docker exec kcadm.sh
-    - name: Authenticate Keycloak kcadm.sh
-      shell: |
-        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-          --server http://localhost:8080 \
-          --realm master \
-          --user admin \
-          --password admin
-      register: kc_auth
-      changed_when: false
+    - name: Ensure admin user exists with a home directory
+      user:
+        name: admin
+        password: "{{ 'admin' | password_hash('sha512') }}"
+        state: present
+        create_home: yes
+        shell: /bin/bash
 
-    - name: Check if open-ondemand client exists
-      shell: |
-        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }}
-      register: kc_clients
-      changed_when: false
+    - name: Ensure admin home directory permissions are correct
+      file:
+        path: /home/admin
+        owner: admin
+        group: admin
+        mode: '0700'
+        state: directory
 
-    - name: Create open-ondemand client if not exists
-      shell: |
-        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh create clients -r {{ keycloak_realm }} \
-          -s clientId={{ keycloak_client_id }} \
-          -s enabled=true \
-          -s clientAuthenticatorType=client-secret \
-          -s standardFlowEnabled=true \
-          -s implicitFlowEnabled=false \
-          -s directAccessGrantsEnabled=true \
-          -s serviceAccountsEnabled=true \
-          -s "redirectUris=[\"http://{{ ood_domain }}:{{ ood_port }}/*\"]" \
-          -s "webOrigins=[\"+\"]"
-      when: (kc_clients.stdout | from_json | length) == 0
+    - name: Fix SELinux context on admin home
+      command: restorecon -R -v /home/admin
+      register: restorecon_out
+      changed_when: '"Relabeled" in restorecon_out.stdout'
 
-    - name: Update open-ondemand client if exists
-      shell: |
-        CID=$(docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }} | grep -o '"id" : "[^"]*' | head -n 1 | cut -d '"' -f 4)
-        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh update clients/$CID -r {{ keycloak_realm }} \
-          -s "redirectUris=[\"http://{{ ood_domain }}:{{ ood_port }}/*\"]"
-      when: (kc_clients.stdout | from_json | length) > 0
+    - name: Create hook script to auto-create home directories
+      copy:
+        dest: /etc/ood/config/create_user_home.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Parse arguments
+          while [[ "$#" -gt 0 ]]; do
+              case $1 in
+                  -u|--user) username="$2"; shift ;;
+                  *) echo "Unknown parameter passed: $1" >&2; exit 1 ;;
+              esac
+              shift
+          done
+          if [ -z "$username" ]; then
+              echo "Error: username is required" >&2
+              exit 1
+          fi
+          homedir=$(getent passwd "$username" | cut -d: -f6)
+          if [ -z "$homedir" ]; then
+              echo "Error: user $username not found" >&2
+              exit 1
+          fi
+          if [ ! -d "$homedir" ]; then
+              echo "Creating home directory $homedir for user $username"
+              mkdir -p "$homedir"
+              cp -rT /etc/skel/ "$homedir/"
+              chown -R "$username":"$username" "$homedir"
+              chmod 700 "$homedir"
+          fi
+          restorecon -R "$homedir"
 
-    - name: Get Keycloak Client Secret
-      shell: |
-        CID=$(docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }} -q clientId={{ keycloak_client_id }} | grep -o '"id" : "[^"]*' | head -n 1 | cut -d '"' -f 4)
-        docker exec hpc-keycloak /opt/keycloak/bin/kcadm.sh get clients/$CID/client-secret -r {{ keycloak_realm }} | grep -o '"value" : "[^"]*' | cut -d '"' -f 4
-      register: kc_secret_out
-      changed_when: false
+    - name: Create htpasswd file for Basic Auth
+      command: htpasswd -bc /etc/ood/config/htpasswd admin admin
+      args:
+        creates: /etc/ood/config/htpasswd
 
-    - name: Set Keycloak Client Secret Fact
-      set_fact:
-        kc_secret: "{{ kc_secret_out.stdout }}"
+    - name: Ensure htpasswd has correct permissions
+      file:
+        path: /etc/ood/config/htpasswd
+        owner: apache
+        group: apache
+        mode: '0640'
 
     - name: Configure OOD Portal (ood_portal.yml)
       copy:
@@ -138,22 +154,16 @@
           # Server Name
           servername: '{{ ood_domain }}'
           
-          # Authentication configuration
+          # Authentication configuration (Basic Auth)
           auth:
-            - 'AuthType openid-connect'
+            - 'AuthType Basic'
+            - 'AuthName "Open OnDemand"'
+            - 'AuthUserFile /etc/ood/config/htpasswd'
             - 'Require valid-user'
           
-          # OIDC Settings
-          oidc_uri: '/oidc'
-          oidc_provider_metadata_url: 'https://{{ ood_domain }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration'
-          oidc_client_id: '{{ keycloak_client_id }}'
-          oidc_client_secret: '{{ kc_secret }}'
-          oidc_remote_user_claim: 'preferred_username'
-          
-          # Since Keycloak is on the same host but via docker, using HTTP to Keycloak
-          # Disable SSL validation for OIDC if not using HTTPS for Keycloak
-          oidc_settings:
-            OIDCSSLValidateServer: 'Off'
+          # Enable hook script to auto-create home directories for any web user
+          pun_pre_hook_root_cmd: "/etc/ood/config/create_user_home.sh"
+
 
     - name: Update OOD Portal Apache Config
       command: /opt/ood/ood-portal-generator/sbin/update_ood_portal
@@ -182,7 +192,7 @@
         state: yes
         persistent: yes
 
-    - name: Allow Apache to read home directories (SELinux)
+    - name: Allow Apache and OnDemand to read home directories and system tools (SELinux)
       seboolean:
         name: "{{ item }}"
         state: yes
@@ -191,6 +201,56 @@
         - httpd_enable_homedirs
         - httpd_read_user_content
         - use_nfs_home_dirs
+        - ondemand_manage_user_home_dir
+        - ondemand_use_slurm
+
+    - name: Enable pam_mkhomedir in sshd PAM config
+      lineinfile:
+        path: /etc/pam.d/sshd
+        line: "session optional pam_mkhomedir.so skel=/etc/skel umask=077"
+        state: present
+
+    - name: Create custom SELinux policy file for OOD
+      copy:
+        dest: /tmp/ood_custom.te
+        content: |
+          module ood_custom 1.0;
+
+          require {
+              type ood_pun_t;
+              type config_home_t;
+              type systemd_userdbd_runtime_t;
+              type user_home_t;
+              type user_home_dir_t;
+              class dir { read write create getattr setattr search open add_name remove_name rmdir };
+              class file { read write create getattr setattr open unlink link rename map };
+              class sock_file { write };
+              class process { setfscreate };
+          }
+
+          # Allow ood_pun_t to manage config_home_t (directories and files)
+          allow ood_pun_t config_home_t:dir { read write create getattr setattr search open add_name remove_name rmdir };
+          allow ood_pun_t config_home_t:file { read write create getattr setattr open unlink link rename };
+
+          # Allow ood_pun_t to read systemd userdbd runtime directories and socket files
+          allow ood_pun_t systemd_userdbd_runtime_t:dir { read search open };
+          allow ood_pun_t systemd_userdbd_runtime_t:sock_file { write };
+
+          # Allow ood_pun_t process setfscreate
+          allow ood_pun_t self:process { setfscreate };
+
+          # Allow ood_pun_t to memory-map user home files (required for SQLite WAL / SHM)
+          allow ood_pun_t user_home_t:file { map };
+          allow ood_pun_t user_home_dir_t:file { map };
+
+    - name: Compile custom SELinux policy module
+      command: checkmodule -M -m -o /tmp/ood_custom.mod /tmp/ood_custom.te
+
+    - name: Package custom SELinux policy module
+      command: semodule_package -o /tmp/ood_custom.pp -m /tmp/ood_custom.mod
+
+    - name: Install custom SELinux policy module
+      command: semodule -i /tmp/ood_custom.pp
 
     - name: Enable and restart HTTPD (Apache for OOD)
       systemd:
