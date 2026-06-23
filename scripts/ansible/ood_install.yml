@@ -182,6 +182,16 @@
         state: yes
         persistent: yes
 
+    - name: Allow Apache to read home directories (SELinux)
+      seboolean:
+        name: "{{ item }}"
+        state: yes
+        persistent: yes
+      loop:
+        - httpd_enable_homedirs
+        - httpd_read_user_content
+        - use_nfs_home_dirs
+
     - name: Enable and restart HTTPD (Apache for OOD)
       systemd:
         name: httpd
