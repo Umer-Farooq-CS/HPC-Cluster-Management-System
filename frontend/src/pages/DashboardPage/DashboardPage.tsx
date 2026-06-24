@@ -4,7 +4,7 @@ import styles from './DashboardPage.module.css'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [iframeUrl] = useState('http://192.168.10.2:8008/pun/sys/dashboard?v=1')
+  const [iframeUrl] = useState('https://192.168.10.2:8443/pun/sys/dashboard?v=1')
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState(false)
 

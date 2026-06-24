@@ -5,7 +5,7 @@
   become: yes
   vars:
     ood_domain: "192.168.10.2"
-    ood_port: "8008"
+    ood_port: "8443"
     keycloak_realm: "hpc"
     keycloak_client_id: "open-ondemand"
     slurm_cluster_name: "hpc-cluster"
@@ -56,6 +56,7 @@
           - ondemand
           - ondemand-selinux
           - mod_auth_openidc
+          - mod_ssl
         state: present
 
     - name: Create cluster config directory
@@ -144,14 +145,24 @@
         group: apache
         mode: '0640'
 
+    - name: Generate self-signed SSL certificate for OOD
+      command: openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout /etc/pki/tls/private/ood.key -out /etc/pki/tls/certs/ood.crt -subj "/C=US/ST=State/L=City/O=HPC/CN={{ ood_domain }}"
+      args:
+        creates: /etc/pki/tls/certs/ood.crt
+
     - name: Configure OOD Portal (ood_portal.yml)
       copy:
         dest: /etc/ood/config/ood_portal.yml
         content: |
-          # Use port 5555 because 80/443 are taken by the HPC Nginx proxy
+          # Use port 8443 for isolated SSL
           port: {{ ood_port }}
           # Server Name
           servername: '{{ ood_domain }}'
+          
+          # SSL Configuration
+          ssl:
+            - 'SSLCertificateFile "/etc/pki/tls/certs/ood.crt"'
+            - 'SSLCertificateKeyFile "/etc/pki/tls/private/ood.key"'
           
           # Authentication configuration (Basic Auth)
           auth:

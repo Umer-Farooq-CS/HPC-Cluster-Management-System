@@ -74,8 +74,8 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_URL=http://${DOMAIN}:8000/api/v1
-        - VITE_WS_URL=ws://${DOMAIN}:8000/api/v1
+        - VITE_API_URL=https://${DOMAIN}/api/v1
+        - VITE_WS_URL=wss://${DOMAIN}/api/v1
     container_name: hpc-frontend
     env_file: .env
     depends_on:

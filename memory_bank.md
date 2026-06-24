@@ -26,7 +26,7 @@ The web app provisions, monitors, and manages the cluster from a browser.
 | **Auth / IAM** | Keycloak (MFA, RBAC, JWT tokens) |
 | **App Database** | PostgreSQL (user accounts, audit trails, saved configs) |
 | **Cache** | Redis (shields slurmctld from repeated UI queries) |
-| **Automation** | TBD — asyncssh/Paramiko vs Ansible Runner |
+| **Automation** | SSHExecutor (asyncssh) & Ansible Runner |
 
 ---
 
@@ -35,8 +35,9 @@ The web app provisions, monitors, and manages the cluster from a browser.
 ```
 /home/umer/Desktop/HPC-Cluster-Script/HPC Cluster Management System/
 ├── frontend/          ← React + TypeScript + Vite (ACTIVE)
-├── scripts/           ← Legacy Python scripts (src/, ansible/, docs/)
-├── docs/              ← Architecture & design docs (01–08)
+├── backend/           ← FastAPI Backend with PostgreSQL + SQLAlchemy models (ACTIVE)
+├── scripts/           ← Ansible playbooks & legacy helper scripts
+├── docs/              ← Architecture & design docs (01–08, plus fixes)
 └── Goal.txt           ← Master spec document
 ```
 
@@ -46,116 +47,89 @@ The web app provisions, monitors, and manages the cluster from a browser.
 
 ### Session 1 — 2026-06-22
 **Goal:** Read all docs and Goal.txt. Scaffold frontend. Build basic homepage and Compute Nodes provisioning UI.
-
-**What was done:**
-- Read all 8 docs in `docs/`, all 4 phase scripts in `scripts/src/`, `Goal.txt`
 - Scaffolded **React + TypeScript + Vite** project inside `frontend/` using `create-vite@4`
-- Installed `react-router-dom@6` (v7 requires Node ≥20, system has Node 18)
-- Pinned development server hostname to `192.168.10.100` inside `vite.config.ts` for clean admin network routing
-- Built the **complete file structure**:
-  - `src/main.tsx` — entry point with BrowserRouter
-  - `src/App.tsx` — route definitions
-  - `src/index.css` — full dark-mode design system (CSS variables, tokens)
-  - `src/components/Layout/` — shell + sticky glassmorphism navbar with connection status pill
-  - `src/components/Navbar/` — brand, nav links, "Not Connected" badge
-  - `src/pages/HomePage/` — hero section + two provision cards (Master + Compute Nodes)
-  - `src/pages/MasterSetupPage/` — placeholder page (Phase 1–3)
-  - `src/pages/SlaveSetupPage/` — Modularized Phase 4 setup
-    - `SlaveSetupPage.tsx` — Container layout (Main Col + Sticky Sidebar)
-    - `NodeRegistryStep/` — Step 1: Registry Grid and CSV import
-    - `ImageAssignStep/` — Step 2: Image Allocation & Image Config Builder
-    - `PipelinePanel/` — Sticky execution checklist & action launcher
-    - `types.ts`, `constants.ts` — Extracted states and interfaces
-  - `src/pages/NotFoundPage.tsx` — 404 fallback
-  - `public/favicon.svg` — hexagon HPC icon
-- Verified: `npm run build` passes (46 modules, no errors)
-- Dev server running: `http://192.168.10.100:5173`
+- Built interactive Node Registry Grid, form validations, ARP network scanner discovery UI, and CSV import.
+- Integrated multi-step wizard for compute node image selection and compilation.
 
-**Homepage features built:**
-- Ambient radial glow background
-- "HPC Cluster Management System" badge with pulsing dot
-- Large gradient headline ("Provision Your HPC Cluster")
-- Tech stack badges: AlmaLinux 9 / Warewulf 4 / OpenHPC 3.4 / Slurm / MariaDB
-- Two large provision cards (Master Node, Compute Nodes)
-- Prerequisites status bar at bottom
+### Session 2 — 2026-06-22
+**Goal:** Refine HPC provisioning pipeline, debug frontend dashboard, and containerize services.
+- Cleaned up frontend network configurations, subnet selectors, and transitions.
+- Scaffolded backend directory with Dockerfile, and integrated Docker Compose configuration for the full stack.
 
-**Compute Nodes provisioning page features built:**
-- **Interactive Node Registry Grid**: Real-time table supporting inline edit, save, cancel, and removal of nodes.
-- **Form Validations**: Built-in regex format checking for hostnames (DNS compliant), MAC addresses (`XX:XX:XX:XX:XX:XX`), and IPv4 addresses.
-- **ARP Network Discovery**: Integrated a quick-fill scanner UI that displays discovered network devices (MAC/IP) allowing for rapid node registration with a single click.
-- **CSV Data Import**: Drag-and-drop/file input selector that parses `hostname,mac,ip` formats, validation-checks each line, skips duplicates, and appends to the table context.
-- **Multi-step Stepper Navigation**: Integrated a progress layout separating "Step 1: Hostname Registration" from "Step 2: Provisioning Image Allocation".
-- **Stateless Image Management**:
-  - Pre-seeded default templates (`almalinux-9` and `rockylinux-9`).
-  - Option to select existing/old templates or construct a **New Image**.
-  - Dual modes for New Image configuration: **Clone settings from an existing template** or **Create from scratch**.
-  - Full-featured **Image Configuration Wizard** displaying all previously hardcoded settings (DNF mirror speeds, client packages to inject, chrony time servers, pam_slurm limits restrictions, memory locks, syslog forwarding, and initramfs compilation configurations).
-  - Newly created/compiled images are automatically registered in the list and become selectable in the dropdown node assignment columns.
-- **Live Deployment Terminal**: When triggering Phase 4 execution, the UI seamlessly transitions to a new "3. Deployment" tab. A styled Mac-like terminal window appears, displaying a real-time stream of stdout logs (simulated currently with `setTimeout`) alongside the animated pipeline checklist.
-- **Architecture & Execution Status**:
-  - **Backend Setup**: Successfully scaffolded the **FastAPI Backend** inside `/backend`.
-  - **Async Execution Engine**: Implemented `SSHExecutor` utilizing `asyncssh` to connect to the Master Node (`192.168.10.2`) and yield stdout line-by-line asynchronously.
-  - **WebSocket Streaming**: Created the `/api/v1/slaves/deploy/ws` WebSocket endpoint that runs Phase 4 `wwctl` and `slurm` commands and pushes the real terminal output to the React Frontend's Live Deployment Terminal.
-  - **Phase 3 Completions**: Missing items from `phase3_image.py` (EPEL, CRB, OpenHPC Repositories, Enabled Services) were added to the frontend Image Configuration Wizard to give full control to the user.
-- **Post-configuration Guidance card**: Manual instructions checklist for thin-client booting.
+### Session 3 — 2026-06-22
+**Goal:** Automate Slurm Web deployment and elevate UX/UI with premium styling.
+- Styled dashboard pages with glassmorphism and modern dark mode typography.
+- Implemented real-time cluster telemetry panels showing active jobs, node health, and queue times.
+
+### Session 4 — 2026-06-23
+**Goal:** Fix Warewulf image import processes and handle node state synchronization.
+- Resolved target compute node Slurm `DRAIN` and `INVALID_REG` errors.
+- Added Chrony time synchronization configurations directly in the stateless container images using `makestep` (stratum-1 sync over master node).
+- Implemented a systemd drop-in `wait-for-clock.conf` to force `slurmd` to wait for clock synchronization on boot to avoid token authentication skews.
+
+### Session 5 — 2026-06-23
+**Goal:** Simplify dashboard modules by removing unused/incomplete features.
+- Surgically removed outdated Phase 2 (Jobs Scheduling) and Phase 3 (Accounting) sub-modules to focus on clean, stable provisioning and core monitoring.
+
+### Session 6 — 2026-06-23
+**Goal:** Integrate Open OnDemand SSO and build the Ansible play runner.
+- Handled Keycloak-to-Apache OIDC token authentication flow mapping.
+- Created the **Ansible Automation Runner Page** in the frontend, allowing admins to run Ansible playbooks (e.g., `ood_install.yml`) with real-time streaming console logs via WebSockets.
+
+### Session 7 — 2026-06-23
+**Goal:** Add Golden Images Configuration support.
+- Extended image creation forms to support Rocky Linux and Ubuntu OCI container bases.
+- Designed template configurations in the database for modular template assignments.
+
+### Session 8 — 2026-06-23
+**Goal:** Fix Open OnDemand Passenger spawn and Home Directory permissions.
+- Created `/etc/ood/config/create_user_home.sh` pre-hook command to automatically create home directories for basic auth/OIDC users when they log in.
+- Wrote and compiled a custom SELinux policy module (`ood_custom.te`) to allow the `ood_pun_t` domain to manage `config_home_t` directories (resolving Rails Passenger `EEXIST` and SQLite WAL/SHM map errors).
+
+### Session 9 — 2026-06-23
+**Goal:** Correct Open OnDemand URL redirection routing.
+- Fixed malformed URL routing in the frontend components where OOD links pointed to invalid addresses, ensuring proper redirection to port 8008.
+
+### Session 10 — 2026-06-23
+**Goal:** Resolve Open OnDemand Job Composer CSRF token validation issues.
+- Solved `422 Unprocessable Entity (Invalid Authenticity Token)` CSRF errors in OOD Job Composer (`myjobs` Rails app).
+- Configured custom proxy headers (`X-Forwarded-Proto`, `X-Forwarded-Port`, `X-Forwarded-Host`) in Apache virtual host directives via `ood_portal.yml`.
+- Configured Rails trusted proxies and disabled secure session cookies for development over unencrypted HTTP (port 8008).
 
 ---
 
 ## 🔲 What Is Left To Build
 
-### Frontend (Priority Order)
+### Frontend
+- [ ] Connect `MasterSetupPage.tsx` wizard to the real backend API (currently running in mock mode with fake terminal logs).
+- [ ] Add real-time telemetry polling or event-stream connections to active cluster status indicators.
 
-#### Next Up: Master Node Setup Page
-- [ ] SSH credentials form (IP, password, port, gateway interface)
-- [ ] Networking config form (data IP, prov IP, prov subnet, DHCP range)
-- [ ] Warewulf config section (image name, image source)
-- [ ] Slurm config section (cluster name, partition, max time, CPU topology)
-- [ ] "Test SSH Connection" button with live status
-- [ ] "Run Provisioning" button → triggers phase 1–3 pipeline
-- [ ] Live terminal log panel (WebSocket stream from backend)
-- [ ] Step checklist (steps 1.1–1.9 from docs/04_phase1_provisioning.md)
-- [ ] Profile save/load system
+### Backend
+- [ ] Implement backend API endpoints for saving/updating the Master Node networking configurations directly.
+- [ ] Integrate user feedback/alerts notifications system.
 
-#### Navbar / Global
-- [ ] Live connection status (polling /api/health/ping)
-- [ ] Profile switcher dropdown
-
-### Backend (Not started yet)
-- [ ] FastAPI app scaffolding (backend/main.py)
-- [ ] requirements.txt
-- [ ] Profile JSON system (backend/profiles/)
-- [ ] core/config_manager.py
-- [ ] core/executor.py (async SSH streaming)
-- [ ] core/script_builder.py (generates commands from profile)
-- [ ] REST APIs: config, profiles, nodes, phases, health
-- [ ] WebSocket endpoint /ws/logs
-
-### Infrastructure (Future)
-- [ ] PostgreSQL schema & connection
-- [ ] Redis cache layer
-- [ ] Nginx reverse proxy config
-- [ ] Keycloak IAM integration (MFA + RBAC)
-- [ ] Docker Compose for full stack
+### Infrastructure & Deployment
+- [ ] Upgrade HTTP connections to HTTPS with SSL/TLS certificates for production-grade security (allowing secure cookies for Open OnDemand).
+- [ ] Perform full scale-out testing with multiple physical diskless nodes booting in parallel.
 
 ---
 
-## 🔑 Open Decisions (from Goal.txt)
+## 🔑 Open Decisions
 
-| Decision | Options |
+| Decision | Status |
 |---|---|
-| **Single Ethernet Port** | A: USB-to-Ethernet adapter (recommended) / B: Wi-Fi for campus / C: Consumer router as firewall |
-| **Bootstrapping Environment** | A: Run on laptop, SSH to master / B: Self-bootstrap on target machine |
-| **Automation Engine** | A: asyncssh / Paramiko / B: Ansible Runner |
+| **HTTPS Support** | To be implemented in Nginx proxy and Apache virtual hosts to support HTTPS production logins. |
+| **Telemetry Delivery** | Currently uses simulation metrics on Dashboard. To be connected to real Prometheus/Node Exporter endpoints. |
 
 ---
 
 ## 🌐 Network Map
 
 ```
-Bastion Host (laptop)  192.168.10.100  ← Web app runs here (for now)
-Master Node            192.168.10.2    ← Admin IP
+Bastion Host (laptop)  192.168.10.100  ← Web app runs here
+Master Node            192.168.10.2    ← Admin IP (Running Apache on 8008 for OOD)
 Master (Data)          192.168.30.1    ← Data network
-Master (Prov)          192.168.20.1    ← Provisioning / PXE
+Master (Prov)          192.168.20.1    ← Provisioning / PXE / DHCP / NTP
 Compute Node pc2       192.168.20.10
 Compute Node pc3       192.168.20.11
 ```
@@ -169,19 +143,17 @@ Compute Node pc3       192.168.20.11
 cd "HPC Cluster Management System/frontend"
 npm run dev
 
-# Build frontend (verify no errors)
-npm run build
+# Start backend dev server
+cd "HPC Cluster Management System/backend"
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# Dev server URL
-http://192.168.10.100:5173
+# Build full stack using Docker Compose
+docker-compose up --build -d
 ```
 
 ---
 
 ## 📌 Important Notes
 
-- Node.js version on system: **v18.19.1** — use react-router-dom@6, create-vite@4
-- React Router v7 requires Node >= 20 — DO NOT use it
-- Legacy frontend/ (old plain HTML files) was replaced by the Vite project
-- scripts/src/ Python files are reference only — NOT modified
-- scripts/src/config.py hardcoded values must become editable UI fields
+- **SELinux Policies:** The compiled policy (`ood_custom`) must remain active on the Master Node to prevent Passenger spawn blocks.
+- **Munge Synchronization:** Shared keys must be synced via `wwctl overlay build` whenever system user configurations are updated on the Master Node.
