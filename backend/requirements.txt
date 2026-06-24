@@ -9,3 +9,5 @@ asyncpg
 greenlet
 python-keycloak
 pydantic-settings
+PyJWT
+passlib[bcrypt]

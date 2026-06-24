@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useKeycloak } from '@react-keycloak/web'
+import { useAuth } from '../../context/AuthContext'
 import styles from './Navbar.module.css'
-
-const NAV_LINKS = [
-  { label: 'Home', to: '/' },
-  { label: 'Master Provisioning', to: '/provision/master' },
-  { label: 'Compute Nodes', to: '/provision/slave' },
-]
 
 export default function Navbar() {
   const { pathname } = useLocation()
-  const { keycloak } = useKeycloak()
+  const { role, username, logout, isAuthenticated } = useAuth()
   const [isConnected, setIsConnected] = useState(false)
 
   // Ping backend every 5 seconds to check connection status
@@ -31,6 +25,8 @@ export default function Navbar() {
     return () => clearInterval(interval)
   }, [])
 
+  const isAdmin = role === 'admin' || role === 'super_admin';
+
   return (
     <nav className={styles.nav} aria-label="Primary navigation">
       <div className={styles.inner}>
@@ -44,27 +40,33 @@ export default function Navbar() {
 
         {/* Nav links */}
         <ul className={styles.links} role="list">
-          {NAV_LINKS.map(({ label, to }) => (
-            <li key={to}>
-              <Link
-                to={to}
-                className={`${styles.link} ${pathname === to ? styles.linkActive : ''}`}
-              >
-                {label}
-              </Link>
-            </li>
-          ))}
+          <li>
+            <Link to="/" className={`${styles.link} ${pathname === '/' ? styles.linkActive : ''}`}>Home</Link>
+          </li>
+          {isAdmin && (
+            <>
+              <li>
+                <Link to="/provision/master" className={`${styles.link} ${pathname === '/provision/master' ? styles.linkActive : ''}`}>Master Provisioning</Link>
+              </li>
+              <li>
+                <Link to="/provision/slave" className={`${styles.link} ${pathname === '/provision/slave' ? styles.linkActive : ''}`}>Compute Nodes</Link>
+              </li>
+              <li>
+                <Link to="/users" className={`${styles.link} ${pathname === '/users' ? styles.linkActive : ''}`}>User Management</Link>
+              </li>
+            </>
+          )}
         </ul>
 
         {/* Status pill & Auth */}
         <div className={styles.statusWrap}>
-          {keycloak.authenticated ? (
+          {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                User: <strong>{keycloak.tokenParsed?.preferred_username || 'Admin'}</strong>
+                User: <strong>{username}</strong> <span style={{opacity: 0.7, fontSize: '0.75rem'}}>({role?.replace('_', ' ')})</span>
               </span>
               <button 
-                onClick={() => keycloak.logout()}
+                onClick={logout}
                 style={{
                   background: 'transparent', border: '1px solid var(--border-light)', 
                   color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '4px',

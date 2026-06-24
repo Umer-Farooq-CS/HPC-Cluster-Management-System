@@ -93,8 +93,19 @@ const PROVISION_CARDS: ProvisionCard[] = [
   },
 ]
 
+import { useAuth } from '../../context/AuthContext'
+
 export default function HomePage() {
   const navigate = useNavigate()
+  const { role } = useAuth()
+  const isAdmin = role === 'admin' || role === 'super_admin'
+
+  const visibleCards = PROVISION_CARDS.filter(card => {
+    if (card.id === 'master' || card.id === 'slave') {
+      return isAdmin;
+    }
+    return true;
+  });
 
   return (
     <div className={styles.page}>
@@ -132,14 +143,16 @@ export default function HomePage() {
       {/* Card section */}
       <section className={styles.cardSection} aria-labelledby="provision-heading">
         <h2 id="provision-heading" className={styles.sectionTitle}>
-          Select a Setup Mode
+          {isAdmin ? "Select a Setup Mode" : "Cluster Services"}
         </h2>
         <p className={styles.sectionSubtitle}>
-          Start with the Master Node, then register your Compute Nodes once the cluster controller is live.
+          {isAdmin 
+            ? "Start with the Master Node, then register your Compute Nodes once the cluster controller is live."
+            : "Access the Open OnDemand portal or check cluster health via Ansible automation."}
         </p>
 
         <div className={styles.cardGrid}>
-          {PROVISION_CARDS.map((card, index) => (
+          {visibleCards.map((card, index) => (
             <button
               key={card.id}
               id={`provision-card-${card.id}`}
