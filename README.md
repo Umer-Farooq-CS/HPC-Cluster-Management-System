@@ -35,7 +35,7 @@ The system operates across three tiers:
 
 ```mermaid
 flowchart LR
-    Bastion[Bastion Host\n(Docker Stack)] == "WebSockets / SSH" ==> Master[Master Node\n(Slurm + Warewulf)]
+    Bastion[Bastion-Host\n(Docker Stack)] == "WebSockets / SSH" ==> Master[Master Node\n(Slurm + Warewulf)]
     Master == "PXE Boot / Munge" ==> Compute[Compute Nodes\n(Stateless RAM Boot)]
 ```
 
