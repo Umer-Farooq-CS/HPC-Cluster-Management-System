@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { MasterConfig, WizardStep } from './types'
-import { DEFAULT_MASTER_CONFIG, MOCK_DEPLOY_LOGS } from './constants'
+import { DEFAULT_MASTER_CONFIG } from './constants'
 import NetworkConfigStep from './components/NetworkConfigStep'
 import ServiceConfigStep from './components/ServiceConfigStep'
 import WarewulfConfigStep from './components/WarewulfConfigStep'
 import MasterDeployStep from './components/MasterDeployStep'
 import styles from './MasterSetupPage.module.css'
+import { useAuth } from '../../context/AuthContext'
 
 export default function MasterSetupPage() {
   const navigate = useNavigate()
+  const { token } = useAuth()
   const [activeStep, setActiveStep] = useState<WizardStep>('network')
   const [config, setConfig] = useState<MasterConfig>(DEFAULT_MASTER_CONFIG)
   
@@ -21,22 +23,33 @@ export default function MasterSetupPage() {
     setConfig(prev => ({ ...prev, ...updates }))
   }
 
-  const handleLaunchMock = () => {
+  const handleLaunch = () => {
     setActiveStep('deploy')
     setIsRunning(true)
     setIsFinished(false)
-    setLogs([])
+    setLogs(['[SYSTEM] Opening WebSocket to Master deployment engine...'])
 
-    let currentLog = 0
-    const interval = setInterval(() => {
-      setLogs(prev => [...prev, MOCK_DEPLOY_LOGS[currentLog]])
-      currentLog++
-      if (currentLog >= MOCK_DEPLOY_LOGS.length) {
-        clearInterval(interval)
-        setIsRunning(false)
-        setIsFinished(true)
-      }
-    }, 500) // fake delay between logs
+    const ws = new WebSocket(`wss://${window.location.hostname}/api/v1/master/deploy/ws?token=${token}`)
+
+    ws.onopen = () => {
+      setLogs(prev => [...prev, '[SYSTEM] Connected — sending provisioning configurations...'])
+      ws.send(JSON.stringify(config))
+    }
+
+    ws.onerror = () => {
+      setLogs(prev => [...prev, '[SYSTEM ERROR] WebSocket connection failed. Please ensure the backend is running.'])
+      setIsRunning(false)
+    }
+
+    ws.onmessage = (event) => {
+      const message = event.data
+      setLogs(prev => [...prev, message])
+    }
+
+    ws.onclose = () => {
+      setIsRunning(false)
+      setIsFinished(true)
+    }
   }
 
   const getStepClass = (step: WizardStep, current: WizardStep) => {
@@ -139,7 +152,7 @@ export default function MasterSetupPage() {
               <button 
                 className={`${styles.btn} ${styles.btnPrimary}`} 
                 style={{ width: '100%' }}
-                onClick={handleLaunchMock}
+                onClick={handleLaunch}
               >
                 🚀 Launch Provisioning
               </button>
@@ -148,9 +161,9 @@ export default function MasterSetupPage() {
               <button 
                 className={`${styles.btn} ${styles.btnPrimary}`} 
                 style={{ width: '100%' }}
-                onClick={handleLaunchMock}
+                onClick={handleLaunch}
               >
-                🚀 Run (Mock Mode)
+                🚀 Run Provisioning
               </button>
             )}
             {activeStep === 'deploy' && isRunning && (

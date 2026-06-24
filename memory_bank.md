@@ -96,20 +96,37 @@ The web app provisions, monitors, and manages the cluster from a browser.
 - Configured custom proxy headers (`X-Forwarded-Proto`, `X-Forwarded-Port`, `X-Forwarded-Host`) in Apache virtual host directives via `ood_portal.yml`.
 - Configured Rails trusted proxies and disabled secure session cookies for development over unencrypted HTTP (port 8008).
 
+### Session 12 — 2026-06-24
+**Goal:** Stabilize HPC Cluster Infrastructure, SSH Connectivity, and NFS Mounts.
+- Debugged and resolved compute node boot failures causing "Destination Host Unreachable" and SSH timeout errors.
+- Discarded unstable cosmetic IP aliasing (NetworkManager dispatcher scripts) that introduced routing loops.
+- Reverted cluster storage networking to flow natively over the `192.168.20.0/24` Provisioning Network.
+- Removed custom `/etc/fstab` file from Warewulf site overlays, preventing it from overriding the default system `fstab` and breaking `/home` and `/opt`.
+- Implemented a robust systemd-native automount architecture (`export-apps.mount` and `export-apps.automount`) inside the `nodeconfig` overlay, achieving conflict-free NFS mounts.
+- Configured Warewulf's host configuration template (`/etc/warewulf/warewulf.conf`) to natively export `/export/apps` to prevent configuration drift.
+- Synchronized `phase2_master.py` and `phase3_image.py` scripts with the new, clean design.
+
+### Session 13 — 2026-06-24
+**Goal:** Integrate Master Node setup with real backend APIs, verify HTTPS status, and run Spack validation tests.
+- Verified that Nginx (port 443) and Apache Open OnDemand (port 8443) are already configured with SSL certificates and operational on HTTPS.
+- Executed a live validation of the Spack framework on the Master Node, compiling `zlib` and generating Lmod module files.
+- Confirmed that compute nodes instantly pick up the new modules via the NFS `/export/apps` share and Lmod environment variables.
+- Created `backend/api/routes/master.py` containing live WebSocket provisioning sequences (network interface binding, firewall, repositories, Chrony NTP server setup, OpenHPC & Slurm installation, Warewulf, and NFS exports).
+- Hooked `MasterSetupPage.tsx` directly into the live WebSocket endpoint `/api/v1/master/deploy/ws` to replace the mock provisioning logs with real execution output.
+
 ---
 
 ## 🔲 What Is Left To Build
 
 ### Frontend
-- [ ] Connect `MasterSetupPage.tsx` wizard to the real backend API (currently running in mock mode with fake terminal logs).
+- [x] Connect `MasterSetupPage.tsx` wizard to the real backend API (live streaming over WebSockets).
 - [ ] Add real-time telemetry polling or event-stream connections to active cluster status indicators.
 
 ### Backend
-- [ ] Implement backend API endpoints for saving/updating the Master Node networking configurations directly.
 - [ ] Integrate user feedback/alerts notifications system.
 
 ### Infrastructure & Deployment
-- [ ] Upgrade HTTP connections to HTTPS with SSL/TLS certificates for production-grade security (allowing secure cookies for Open OnDemand).
+- [x] Upgrade HTTP connections to HTTPS with SSL/TLS certificates for production-grade security (already verified/configured).
 - [ ] Perform full scale-out testing with multiple physical diskless nodes booting in parallel.
 
 ---

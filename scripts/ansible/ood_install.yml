@@ -134,7 +134,7 @@
           restorecon -R "$homedir"
 
     - name: Create htpasswd file for Basic Auth
-      command: htpasswd -bc /etc/ood/config/htpasswd admin admin
+      command: htpasswd -Bbc /etc/ood/config/htpasswd admin admin
       args:
         creates: /etc/ood/config/htpasswd
 

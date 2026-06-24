@@ -114,6 +114,70 @@ def configure_master():
     """
     run_remote(ww_config, "Configuring Warewulf Networking", config.MASTER_IP, config.MASTER_PASS)
     
+    # 5. Setup NFS, Spack, and Open OnDemand Synchronization
+    print("\n[*] Configuring NFS Server, Spack, and Open OnDemand Sync...")
+    
+    nfs_spack_cmd = f"""
+    # 1. Create the base shared application directory
+    mkdir -p /export/apps
+    
+    # 2. Configure NFS utilities and export permissions natively via Warewulf
+    dnf -y install nfs-utils python3-pip
+    pip3 install pyyaml --quiet || true
+    
+    python3 -c '
+import yaml
+try:
+    with open("/etc/warewulf/warewulf.conf", "r") as f:
+        conf = yaml.safe_load(f)
+    
+    # Ensure export paths are defined natively
+    exports = conf.get("nfs", {{}}).get("export paths", [])
+    paths = [e["path"] for e in exports]
+    
+    if "/export/apps" not in paths:
+        exports.append({{"path": "/export/apps", "export options": "rw,sync,no_root_squash"}})
+        conf["nfs"]["export paths"] = exports
+        with open("/etc/warewulf/warewulf.conf", "w") as f:
+            yaml.dump(conf, f, default_flow_style=False)
+except Exception as e:
+    print("Error updating warewulf.conf:", e)
+'
+    
+    # 3. Fire up the NFS network services and compile Warewulf config
+    systemctl enable --now rpcbind nfs-server
+    wwctl configure -a
+    
+    # 4. Git clone Spack natively into the shared folder
+    if [ ! -d "/export/apps/spack" ]; then
+        git clone -c feature.manyFiles=true https://github.com/spack/spack.git /export/apps/spack
+    fi
+    
+    # 5. Create a global environment drop-in so every terminal session knows where Spack is
+    cat << 'SPACK_ENV' > /etc/profile.d/spack_setup.sh
+if [ -f /export/apps/spack/share/spack/setup-env.sh ]; then
+    . /export/apps/spack/share/spack/setup-env.sh
+fi
+SPACK_ENV
+    chmod +x /etc/profile.d/spack_setup.sh
+
+    # 6. Configure Open OnDemand to look for module cache files
+    mkdir -p /etc/ood/config/ondemand.d
+    mkdir -p /etc/ood/config/modules
+    grep -q "module_file_dir" /etc/ood/config/ondemand.d/ondemand.yml || echo "module_file_dir: \\"/etc/ood/config/modules\\"" >> /etc/ood/config/ondemand.d/ondemand.yml
+
+    # 7. Create the cron script to spider Spack packages
+    cat << 'CRON' > /etc/cron.hourly/sync_ood_modules
+#!/bin/bash
+# Sync Spack Lmod paths over to Open OnDemand UI cache templates
+export MODULEPATH=/export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+/opt/ohpc/admin/lmod/lmod/libexec/spider -o spider-json \$MODULEPATH > /etc/ood/config/modules/hpc-cluster.json
+CRON
+    chmod +x /etc/cron.hourly/sync_ood_modules
+    /etc/cron.hourly/sync_ood_modules || true
+    """
+    run_remote(nfs_spack_cmd, "Setting up NFS, Spack, and OOD Sync", config.MASTER_IP, config.MASTER_PASS)
+
     print("\n[+] Master Node configuration complete.")
 
 if __name__ == "__main__":

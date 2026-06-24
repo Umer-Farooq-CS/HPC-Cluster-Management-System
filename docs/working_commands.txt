@@ -1,0 +1,104 @@
+# Working Commands for Manual Verification
+
+## Step 1: Master Node Setup (NFS & Spack)
+
+```bash
+# 1. Create the base shared application directory
+mkdir -p /export/apps
+
+# 2. Configure NFS utilities and export permissions
+dnf -y install nfs-utils
+echo "/export/apps 192.168.30.0/24(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports
+echo "/home 192.168.30.0/24(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports
+
+# 3. Fire up the NFS network services
+systemctl enable --now rpcbind nfs-server
+exportfs -a
+
+# 4. Git clone Spack natively into the shared folder
+if [ ! -d "/export/apps/spack" ]; then
+    git clone -c feature.manyFiles=true https://github.com/spack/spack.git /export/apps/spack
+fi
+
+# 5. Create a global environment drop-in so every terminal session knows where Spack is
+cat << 'SPACK_ENV' > /etc/profile.d/spack_setup.sh
+if [ -f /export/apps/spack/share/spack/setup-env.sh ]; then
+    . /export/apps/spack/share/spack/setup-env.sh
+fi
+SPACK_ENV
+chmod +x /etc/profile.d/spack_setup.sh
+```
+
+## Step 2: Compute Node Mounts (Warewulf Golden Image)
+
+```bash
+# Ensure mount points exist in the Golden Image container
+CHROOT=$(wwctl image show almalinux-9)
+mkdir -p $CHROOT/export/apps
+mkdir -p $CHROOT/home
+
+# Import master /etc/fstab into nodeconfig overlay
+wwctl overlay import -o --parents nodeconfig /etc/fstab
+
+# Append NFS mounts pointing to the Data Network
+OVERLAY_FSTAB="/srv/warewulf/overlays/nodeconfig/rootfs/etc/fstab"
+grep -q "192.168.30.1:/export/apps" "$OVERLAY_FSTAB" || echo "192.168.30.1:/export/apps /export/apps nfs nfsvers=4,nodev,nosuid,sync 0 0" >> "$OVERLAY_FSTAB"
+grep -q "192.168.30.1:/home" "$OVERLAY_FSTAB" || echo "192.168.30.1:/home /home nfs nfsvers=4,nodev,nosuid,sync 0 0" >> "$OVERLAY_FSTAB"
+
+# Rebuild overlays
+wwctl overlay build
+```
+
+## Step 3: Backend User Test (FastAPI logic)
+
+```bash
+clean_username="testuser1"
+if id "$clean_username" &>/dev/null; then
+    echo "USER_EXISTS"
+else
+    useradd -m -s /bin/bash "$clean_username"
+    
+    # Write LMOD bashrc dynamically using echo
+    echo "# Spack Lmod Environment" >> /home/"$clean_username"/.bashrc
+    echo "if [ -d /export/apps/spack ]; then" >> /home/"$clean_username"/.bashrc
+    echo "    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core" >> /home/"$clean_username"/.bashrc
+    echo "fi" >> /home/"$clean_username"/.bashrc
+
+    chown "$clean_username":"$clean_username" /home/"$clean_username"/.bashrc
+    echo "USER_CREATED"
+fi
+```
+
+## Step 4: Spack Compiling
+
+```bash
+# Source Spack in the current session
+. /export/apps/spack/share/spack/setup-env.sh
+
+# Install a small test package to verify compiler pipeline
+spack install zlib
+
+# Regenerate Lmod module files so Open OnDemand and users can see the new module
+spack module lmod refresh --yes
+```
+
+## Step 5: Open OnDemand Sync
+
+```bash
+# Configure Open OnDemand to look for module cache files
+mkdir -p /etc/ood/config/ondemand.d
+mkdir -p /etc/ood/config/modules
+echo "module_file_dir: \"/etc/ood/config/modules\"" >> /etc/ood/config/ondemand.d/ondemand.yml
+
+# Create the cron script to spider Spack packages
+cat << 'CRON' > /etc/cron.hourly/sync_ood_modules
+#!/bin/bash
+# Sync Spack Lmod paths over to Open OnDemand UI cache templates
+export MODULEPATH=/export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+/opt/ohpc/admin/lmod/lmod/libexec/spider -o spider-json $MODULEPATH > /etc/ood/config/modules/spack_stack.json
+CRON
+
+# Make executable and run
+chmod +x /etc/cron.hourly/sync_ood_modules
+/etc/cron.hourly/sync_ood_modules
+```

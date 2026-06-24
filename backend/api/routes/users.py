@@ -49,6 +49,11 @@ async def create_user(user_in: UserCreate, current_user: User = Depends(get_admi
     
     commands = [
         f"useradd -m -s /bin/bash {user_in.username} || echo 'User might exist'",
+        f"echo '# Spack Lmod Environment' >> /home/{user_in.username}/.bashrc",
+        f"echo 'if [ -d /export/apps/spack ]; then' >> /home/{user_in.username}/.bashrc",
+        f"echo '    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core' >> /home/{user_in.username}/.bashrc",
+        f"echo 'fi' >> /home/{user_in.username}/.bashrc",
+        f"chown {user_in.username}:{user_in.username} /home/{user_in.username}/.bashrc",
         f"echo '{user_in.password}' | passwd --stdin {user_in.username}",
         f"htpasswd -B -b /etc/ood/config/htpasswd {user_in.username} '{user_in.password}'",
         f"sacctmgr -i add account default || echo 'Account exists'",

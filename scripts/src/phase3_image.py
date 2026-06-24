@@ -79,6 +79,56 @@ rm -f $CHROOT/tmp/setup_inject.sh"""
     
     # Fix NetworkManager timeout issues on compute nodes
     wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/network/NetworkManager-wait-online.service.d/override.conf /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
+    
+    # Configure NFS Mounts via Native systemd Units (instead of overriding /etc/fstab)
+    # This prevents overriding Warewulf's auto-generated /etc/fstab which mounts /home and /opt.
+    CHROOT=$(wwctl image show almalinux-9)
+    mkdir -p $CHROOT/export/apps
+    
+    # Global Spack modules path configuration
+    mkdir -p $CHROOT/etc/profile.d
+    cat << 'SPACK_MOD' > $CHROOT/etc/profile.d/spack_modules.sh
+if [ -d /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core ]; then
+    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+fi
+SPACK_MOD
+    chmod +x $CHROOT/etc/profile.d/spack_modules.sh
+    
+    OVERLAY_DIR="/srv/warewulf/overlays/nodeconfig/rootfs"
+    mkdir -p $OVERLAY_DIR/etc/systemd/system/multi-user.target.wants
+    
+    # Create the mount unit
+    cat << 'UNIT' > $OVERLAY_DIR/etc/systemd/system/export-apps.mount
+[Unit]
+Description=NFS Mount for Shared Applications
+After=network.target
+
+[Mount]
+What={config.PROV_IP}:/export/apps
+Where=/export/apps
+Type=nfs
+Options=nfsvers=4,nodev,nosuid,bg,nofail,_netdev
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+    # Create the automount unit
+    cat << 'AUTO' > $OVERLAY_DIR/etc/systemd/system/export-apps.automount
+[Unit]
+Description=Automount for Shared Applications
+After=network.target
+
+[Automount]
+Where=/export/apps
+TimeoutIdleSec=600
+
+[Install]
+WantedBy=multi-user.target
+AUTO
+
+    # Enable the automount
+    ln -sf ../export-apps.automount $OVERLAY_DIR/etc/systemd/system/multi-user.target.wants/export-apps.automount
     """
     run_remote(overlay_cmd, "Configuring Munge, Slurm & Networking Overlays", config.MASTER_IP, config.MASTER_PASS)
     

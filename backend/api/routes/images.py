@@ -233,6 +233,18 @@ DROPIN
  2>&1"""
         await run_and_check(clock_cmd, "Step 1E.2 (Clock sync)")
 
+        # ── Step 1E.3: Spack Global Profile setup ──────────────────────────────
+        await websocket.send_text("[STEP 6b] Baking Spack global Lmod path configurations into profile.d...")
+        spack_mod_cmd = f"""CHROOT=$(wwctl image show {cfg.name}) && \\
+mkdir -p $CHROOT/etc/profile.d && \\
+cat > $CHROOT/etc/profile.d/spack_modules.sh << 'SPACK_MOD'
+if [ -d /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core ]; then
+    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+fi
+SPACK_MOD
+chmod +x $CHROOT/etc/profile.d/spack_modules.sh 2>&1"""
+        await run_and_check(spack_mod_cmd, "Step 1E.3 (Spack Profile)")
+
         # ── Step 1F: Syslog forwarding ─────────────────────────────────────────
         await websocket.send_text("[STEP 7] Configuring syslog forwarding to Master Node...")
         syslog_cmd = fr"""CHROOT=$(wwctl image show {cfg.name}) && \
