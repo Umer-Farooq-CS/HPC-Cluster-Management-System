@@ -146,7 +146,7 @@ export default function HomePage() {
               className={`${styles.card} ${styles[`card-${card.gradient}`]}`}
               onClick={() => {
                 if (card.route === '__ood__') {
-                  window.open(`http://192.168.10.2:8008/pun/sys/dashboard`, '_blank', 'noopener,noreferrer');
+                  window.open(`https://192.168.10.2:8443/pun/sys/dashboard`, '_blank', 'noopener,noreferrer');
                 } else {
                   navigate(card.route);
                 }

@@ -164,6 +164,9 @@
             - 'SSLCertificateFile "/etc/pki/tls/certs/ood.crt"'
             - 'SSLCertificateKeyFile "/etc/pki/tls/private/ood.key"'
           
+          # Allow embedding in iframes from the Bastion Host
+          security_csp_frame_ancestors: "https://192.168.10.100 https://localhost"
+          
           # Authentication configuration (Basic Auth)
           auth:
             - 'AuthType Basic'
