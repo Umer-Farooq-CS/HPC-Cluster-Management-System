@@ -5,14 +5,17 @@ import styles from './Navbar.module.css'
 
 export default function Navbar() {
   const { pathname } = useLocation()
-  const { role, username, logout, isAuthenticated } = useAuth()
+  const { token, role, username, logout, isAuthenticated } = useAuth()
   const [isConnected, setIsConnected] = useState(false)
 
   // Ping backend every 5 seconds to check connection status
   useEffect(() => {
     const checkConnection = async () => {
+      if (!token) return;
       try {
-        const res = await fetch(`https://${window.location.hostname}/api/v1/slaves/arp`)
+        const res = await fetch(`https://${window.location.hostname}/api/v1/slaves/arp`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
         if (res.status !== 502) setIsConnected(true)
         else setIsConnected(false)
       } catch (err) {

@@ -9,11 +9,11 @@ import PipelinePanel from './PipelinePanel/PipelinePanel'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import styles from './SlaveSetupPage.module.css'
 
-import { useKeycloak } from '@react-keycloak/web'
+import { useAuth } from '../../context/AuthContext'
 
 export default function SlaveSetupPage() {
   const navigate = useNavigate()
-  const { keycloak } = useKeycloak()
+  const { token } = useAuth()
 
   // App State
   const [activeStep, setActiveStep] = useState<WizardStep>('nodes')
@@ -71,10 +71,10 @@ export default function SlaveSetupPage() {
       })),
       groups: groups.map(g => ({ name: g.name, members: g.members })),
       overwrite,
-      token: keycloak.token
+      token: token
     }
 
-    const ws = new WebSocket(`wss://${window.location.hostname}/api/v1/slaves/deploy/ws`)
+    const ws = new WebSocket(`wss://${window.location.hostname}/api/v1/slaves/deploy/ws?token=${token}`)
 
     ws.onopen = () => {
       setLogs(prev => [...prev, `[SYSTEM] Connected — sending config for ${payload.nodes.length} node(s)...`])

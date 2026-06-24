@@ -1,9 +1,11 @@
 import os
 import asyncio
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from typing import List
 from core.ssh_executor import SSHExecutor
 from core.config import settings
+from core.security import get_current_user, SECRET_KEY, ALGORITHM
+import jwt
 
 router = APIRouter()
 
@@ -11,7 +13,7 @@ router = APIRouter()
 REMOTE_ANSIBLE_DIR = "/opt/hpc-cluster-system/scripts/ansible"
 
 @router.get("/playbooks", response_model=List[str])
-async def list_playbooks():
+async def list_playbooks(user: dict = Depends(get_current_user)):
     """List all available Ansible playbooks (.yml files) on the Master Node."""
     executor = SSHExecutor(
         host=settings.MASTER_IP,
@@ -36,9 +38,21 @@ async def list_playbooks():
         return []
 
 @router.websocket("/run/{playbook_name}")
-async def run_playbook(websocket: WebSocket, playbook_name: str):
+async def run_playbook(websocket: WebSocket, playbook_name: str, token: str = Query(None)):
     """Run an Ansible playbook and stream the output back to the client."""
     await websocket.accept()
+    
+    if not token:
+        await websocket.send_text("\n\033[1;31m[ERROR] Unauthorized: Missing token\033[0m\n")
+        await websocket.close(code=1008)
+        return
+
+    try:
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception as e:
+        await websocket.send_text(f"\n\033[1;31m[ERROR] Unauthorized: {str(e)}\033[0m\n")
+        await websocket.close(code=1008)
+        return
     
     executor = SSHExecutor(
         host=settings.MASTER_IP,

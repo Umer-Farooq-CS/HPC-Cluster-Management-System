@@ -1,10 +1,12 @@
 import re
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
 
 from core.ssh_executor import SSHExecutor
 from core.config import settings
+from core.security import get_current_user, SECRET_KEY, ALGORITHM
+import jwt
 
 router = APIRouter()
 
@@ -42,7 +44,7 @@ class ImageBuildPayload(BaseModel):
 # ─── List Images ───────────────────────────────────────────────────────────────
 
 @router.get("/")
-async def list_images():
+async def list_images(user: dict = Depends(get_current_user)):
     """
     Runs `wwctl image list` on the Master Node and returns structured image data.
     """
@@ -86,7 +88,7 @@ async def list_images():
 # ─── Delete Image ──────────────────────────────────────────────────────────────
 
 @router.delete("/{image_name}")
-async def delete_image(image_name: str):
+async def delete_image(image_name: str, user: dict = Depends(get_current_user)):
     """
     Deletes a Warewulf image from the Master Node.
     """
@@ -105,7 +107,7 @@ async def delete_image(image_name: str):
 # ─── Build Image via WebSocket ─────────────────────────────────────────────────
 
 @router.websocket("/build/ws")
-async def build_image_ws(websocket: WebSocket):
+async def build_image_ws(websocket: WebSocket, token: str = Query(None)):
     """
     Streams Phase 3 image build process to the client.
     Accepts a JSON payload with image configuration via the first WS message.
@@ -113,6 +115,18 @@ async def build_image_ws(websocket: WebSocket):
     await websocket.accept()
 
     try:
+        if not token:
+            await websocket.send_text("[ERROR] Unauthorized: Missing token")
+            await websocket.close(code=1008)
+            return
+
+        try:
+            jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        except Exception as e:
+            await websocket.send_text(f"[ERROR] Unauthorized: {str(e)}")
+            await websocket.close(code=1008)
+            return
+
         # Receive the build config as JSON from the first message
         data = await websocket.receive_json()
         cfg = ImageBuildPayload(**data)

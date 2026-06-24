@@ -17,10 +17,10 @@ interface Props {
   onNext: () => void
 }
 
-import { useKeycloak } from '@react-keycloak/web'
+import { useAuth } from '../../../context/AuthContext'
 
 export default function NodeRegistryStep({ nodes, setNodes, groups, setGroups, defaultImageName, onNext }: Props) {
-  const { keycloak } = useKeycloak()
+  const { token } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [newHostname, setNewHostname] = React.useState('')
@@ -35,7 +35,7 @@ export default function NodeRegistryStep({ nodes, setNodes, groups, setGroups, d
     const fetchRegisteredNodes = async () => {
       try {
         const headers: Record<string, string> = {}
-        if (keycloak.token) headers['Authorization'] = `Bearer ${keycloak.token}`
+        if (token) headers['Authorization'] = `Bearer ${token}`
 
         const res = await fetch(`https://${window.location.hostname}/api/v1/slaves/registered`, { headers })
         if (res.ok) {
@@ -53,10 +53,10 @@ export default function NodeRegistryStep({ nodes, setNodes, groups, setGroups, d
       }
     }
     
-    if (keycloak.token) {
+    if (token) {
       fetchRegisteredNodes()
     }
-  }, [keycloak.token, setNodes])
+  }, [token, setNodes])
 
   // ARP Discovery Mock State
   const [isScanning, setIsScanning] = React.useState(false)
@@ -67,7 +67,7 @@ export default function NodeRegistryStep({ nodes, setNodes, groups, setGroups, d
     setIsScanning(true)
     try {
       const headers: Record<string, string> = {}
-      if (keycloak.token) headers['Authorization'] = `Bearer ${keycloak.token}`
+      if (token) headers['Authorization'] = `Bearer ${token}`
 
       const res = await fetch(`https://${window.location.hostname}/api/v1/slaves/arp`, { headers })
       if (!res.ok) throw new Error('Failed to fetch ARP data')

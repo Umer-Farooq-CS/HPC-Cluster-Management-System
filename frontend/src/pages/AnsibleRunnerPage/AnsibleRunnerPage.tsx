@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import styles from './AnsibleRunnerPage.module.css';
 
 // ANSI regex to strip color codes or we can just render them out/ignore for simplicity
@@ -6,6 +7,7 @@ import styles from './AnsibleRunnerPage.module.css';
 const stripAnsi = (text: string) => text.replace(/\x1B\[[0-9;]*m/g, '');
 
 const AnsibleRunnerPage: React.FC = () => {
+  const { token } = useAuth();
   const [playbooks, setPlaybooks] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activePlaybook, setActivePlaybook] = useState<string | null>(null);
@@ -26,7 +28,9 @@ const AnsibleRunnerPage: React.FC = () => {
   useEffect(() => {
     const fetchPlaybooks = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/ansible/playbooks`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/ansible/playbooks`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           setPlaybooks(data);
@@ -49,7 +53,7 @@ const AnsibleRunnerPage: React.FC = () => {
     setActivePlaybook(playbook);
     setIsRunning(true);
 
-    const wsUrl = `${import.meta.env.VITE_WS_URL}/ansible/run/${encodeURIComponent(playbook)}`;
+    const wsUrl = `${import.meta.env.VITE_WS_URL}/ansible/run/${encodeURIComponent(playbook)}?token=${token}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 

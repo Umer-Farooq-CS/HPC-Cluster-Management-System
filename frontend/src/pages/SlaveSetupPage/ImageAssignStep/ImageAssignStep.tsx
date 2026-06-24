@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useAuth } from '../../../context/AuthContext'
 import type { ComputeNode, ImageConfig } from '../types'
 import { BLANK_IMAGE_CONFIG } from '../constants'
 import styles from './ImageAssignStep.module.css'
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function ImageAssignStep({ nodes, setNodes, images, setImages, onBack }: Props) {
+  const { token } = useAuth()
   // ── Live images from Master Node ─────────────────────────────────────────
   const [liveImages, setLiveImages] = useState<LiveImage[]>([])
   const [loadingImages, setLoadingImages] = useState(false)
@@ -40,7 +42,9 @@ export default function ImageAssignStep({ nodes, setNodes, images, setImages, on
   const fetchImages = async () => {
     setLoadingImages(true)
     try {
-      const res = await fetch(`${API}/images/`)
+      const res = await fetch(`${API}/images/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       const data = await res.json()
       if (data.status === 'success') {
         setLiveImages(data.images)
@@ -80,7 +84,10 @@ export default function ImageAssignStep({ nodes, setNodes, images, setImages, on
   const handleDelete = async (name: string) => {
     if (!confirm(`Delete image "${name}" from the Master Node? This cannot be undone.`)) return
     try {
-      const res = await fetch(`${API}/images/${name}`, { method: 'DELETE' })
+      const res = await fetch(`${API}/images/${name}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       const data = await res.json()
       if (data.status === 'success') {
         await fetchImages()
@@ -116,7 +123,7 @@ export default function ImageAssignStep({ nodes, setNodes, images, setImages, on
     setBuildLogs([`[SYSTEM] Connecting to backend build engine...`])
 
     const wsUrl = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/api/v1'
-    const ws = new WebSocket(`${wsUrl}/images/build/ws`)
+    const ws = new WebSocket(`${wsUrl}/images/build/ws?token=${token}`)
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ ...imgConfig, name: cleanName }))

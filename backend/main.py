@@ -53,9 +53,9 @@ from fastapi import Depends
 # Include Routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
-app.include_router(slaves.router, prefix="/api/v1/slaves", tags=["slaves"], dependencies=[Depends(get_current_user)])
-app.include_router(images.router, prefix="/api/v1/images", tags=["images"], dependencies=[Depends(get_current_user)])
-app.include_router(ansible.router, prefix="/api/v1/ansible", tags=["ansible"], dependencies=[Depends(get_current_user)])
+app.include_router(slaves.router, prefix="/api/v1/slaves", tags=["slaves"])
+app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
+app.include_router(ansible.router, prefix="/api/v1/ansible", tags=["ansible"])
 
 @app.get("/")
 def read_root():
