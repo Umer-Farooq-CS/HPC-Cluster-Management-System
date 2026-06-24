@@ -17,11 +17,11 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/v1/users/`, {
+      const response = await fetch(`${apiUrl}/users/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -43,7 +43,7 @@ export default function UsersPage() {
     setError('');
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/users/`, {
+      const response = await fetch(`${apiUrl}/users/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
