@@ -52,7 +52,8 @@ async def create_user(user_in: UserCreate, current_user: User = Depends(get_admi
         f"echo '{user_in.password}' | passwd --stdin {user_in.username}",
         f"htpasswd -B -b /etc/ood/config/htpasswd {user_in.username} '{user_in.password}'",
         f"sacctmgr -i add account default || echo 'Account exists'",
-        f"sacctmgr -i add user {user_in.username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'"
+        f"sacctmgr -i add user {user_in.username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'",
+        "wwctl overlay build -A || echo 'Failed to build overlays'"
     ]
     
     if user_in.role == "super_admin":
