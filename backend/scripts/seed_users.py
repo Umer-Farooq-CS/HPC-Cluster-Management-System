@@ -5,7 +5,7 @@ import asyncio
 # Ensure backend directory is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.database import async_session, engine, Base
+from core.database import AsyncSessionLocal, engine, Base
 from models.user import User
 from core.security import get_password_hash
 from sqlalchemy.future import select
@@ -15,7 +15,7 @@ async def seed():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         
-    async with async_session() as session:
+    async with AsyncSessionLocal() as session:
         # Seed super admin
         result = await session.execute(select(User).where(User.username == "umer"))
         if not result.scalars().first():
