@@ -50,7 +50,7 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_admin_
     commands = [
         f"useradd -m -s /bin/bash {user_in.username} || echo 'User might exist'",
         f"echo '{user_in.password}' | passwd --stdin {user_in.username}",
-        f"htpasswd -b /etc/ood/config/htpasswd {user_in.username} '{user_in.password}'",
+        f"htpasswd -B -b /etc/ood/config/htpasswd {user_in.username} '{user_in.password}'",
         f"sacctmgr -i add account default || echo 'Account exists'",
         f"sacctmgr -i add user {user_in.username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'"
     ]
