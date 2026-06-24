@@ -37,7 +37,7 @@ async def execute_ssh_commands(commands: list):
     return results
 
 @router.post("/", response_model=UserResponse)
-async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_admin_user)):
+async def create_user(user_in: UserCreate, current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     # 1. Ensure user does not already exist in DB
     result = await db.execute(select(User).where(User.username == user_in.username))
     if result.scalars().first():
@@ -76,7 +76,7 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_admin_
     return db_user
 
 @router.get("/", response_model=list[UserResponse])
-async def list_users(db: AsyncSession = Depends(get_admin_user)):
+async def list_users(current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
     users = result.scalars().all()
     return users
