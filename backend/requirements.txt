@@ -10,4 +10,4 @@ greenlet
 python-keycloak
 pydantic-settings
 PyJWT
-passlib[bcrypt]
+bcrypt
