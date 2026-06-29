@@ -11,3 +11,4 @@ python-keycloak
 pydantic-settings
 PyJWT
 bcrypt
+pyyaml
