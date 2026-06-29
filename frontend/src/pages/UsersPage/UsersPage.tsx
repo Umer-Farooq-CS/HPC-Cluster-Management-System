@@ -6,6 +6,7 @@ interface User {
   id: number;
   username: string;
   role: string;
+  env_profile: string | null;
 }
 
 export default function UsersPage() {
@@ -128,6 +129,7 @@ export default function UsersPage() {
                 <th>ID</th>
                 <th>Username</th>
                 <th>System Role</th>
+                <th>Env Profile</th>
               </tr>
             </thead>
             <tbody>
@@ -137,8 +139,17 @@ export default function UsersPage() {
                   <td>{u.username}</td>
                   <td>
                     <span className={`${styles.badge} ${styles[u.role]}`}>
-                      {u.role.replace('_', ' ')}
+                      {u.role.replace(/_/g, ' ')}
                     </span>
+                  </td>
+                  <td>
+                    {u.env_profile ? (
+                      <span className={styles.badge} style={{ background: 'hsl(168,80%,42%,0.15)', color: 'hsl(168,80%,42%)', border: '1px solid hsl(168,80%,42%,0.3)' }}>
+                        {u.env_profile}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Base Spack</span>
+                    )}
                   </td>
                 </tr>
               ))}

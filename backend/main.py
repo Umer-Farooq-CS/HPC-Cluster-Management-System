@@ -8,14 +8,19 @@ from api.routes import ansible
 from core.config import settings
 
 from contextlib import asynccontextmanager
-from core.database import engine, Base
+from core.database import engine, Base, AsyncSessionLocal
 import models.slaves  # Import models to register them with Base
+import models.env_stack  # Register EnvStack model
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize Database Tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Seed default environment stacks
+    from api.routes.env_stacks import seed_default_stacks
+    async with AsyncSessionLocal() as db:
+        await seed_default_stacks(db)
     yield
     # Cleanup on shutdown
     await engine.dispose()
@@ -48,6 +53,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 from api.routes import auth
 from api.routes import users
 from api.routes import master
+from api.routes import env_stacks
 from core.security import get_current_user
 from fastapi import Depends
 
@@ -58,7 +64,9 @@ app.include_router(master.router, prefix="/api/v1/master", tags=["master"])
 app.include_router(slaves.router, prefix="/api/v1/slaves", tags=["slaves"])
 app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
 app.include_router(ansible.router, prefix="/api/v1/ansible", tags=["ansible"])
+app.include_router(env_stacks.router, prefix="/api/v1/env-stacks", tags=["env-stacks"])
 
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "HPC Management API is running"}
+

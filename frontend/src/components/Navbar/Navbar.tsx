@@ -57,8 +57,14 @@ export default function Navbar() {
               <li>
                 <Link to="/users" className={`${styles.link} ${pathname === '/users' ? styles.linkActive : ''}`}>User Management</Link>
               </li>
+              <li>
+                <Link to="/env-stacks" className={`${styles.link} ${pathname === '/env-stacks' ? styles.linkActive : ''}`}>Env Profiles</Link>
+              </li>
             </>
           )}
+          <li>
+            <Link to="/my-profile" className={`${styles.link} ${pathname === '/my-profile' ? styles.linkActive : ''}`}>My Profile</Link>
+          </li>
         </ul>
 
         {/* Status pill & Auth */}

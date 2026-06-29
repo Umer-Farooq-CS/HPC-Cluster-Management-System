@@ -21,6 +21,11 @@ class UserResponse(BaseModel):
     id: int
     username: str
     role: str
+    env_profile: str | None = None
+
+    class Config:
+        from_attributes = True
+
 
 async def execute_ssh_commands(commands: list):
     executor = SSHExecutor(

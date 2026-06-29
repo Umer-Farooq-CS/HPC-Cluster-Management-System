@@ -7,6 +7,8 @@ import DashboardPage from './pages/DashboardPage/DashboardPage'
 import AnsibleRunnerPage from './pages/AnsibleRunnerPage/AnsibleRunnerPage'
 import LoginPage from './pages/LoginPage/LoginPage'
 import UsersPage from './pages/UsersPage/UsersPage'
+import EnvStacksPage from './pages/EnvStacksPage/EnvStacksPage'
+import MyProfilePage from './pages/MyProfilePage/MyProfilePage'
 import NotFoundPage from './pages/NotFoundPage'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -35,6 +37,8 @@ function App() {
           <Route path="provision/master" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><MasterSetupPage /></ProtectedRoute>} />
           <Route path="provision/slave" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><SlaveSetupPage /></ProtectedRoute>} />
           <Route path="users" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><UsersPage /></ProtectedRoute>} />
+          <Route path="env-stacks" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><EnvStacksPage /></ProtectedRoute>} />
+          <Route path="my-profile" element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="ansible" element={<AnsibleRunnerPage />} />
           <Route path="*" element={<NotFoundPage />} />
@@ -45,3 +49,4 @@ function App() {
 }
 
 export default App
+
