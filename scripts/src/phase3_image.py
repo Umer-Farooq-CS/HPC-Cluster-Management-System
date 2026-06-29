@@ -85,14 +85,16 @@ rm -f $CHROOT/tmp/setup_inject.sh"""
     CHROOT=$(wwctl image show almalinux-9)
     mkdir -p $CHROOT/export/apps
     
-    # Global Spack modules path configuration
+    # Global Spack environment setup
     mkdir -p $CHROOT/etc/profile.d
-    cat << 'SPACK_MOD' > $CHROOT/etc/profile.d/spack_modules.sh
-if [ -d /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core ]; then
-    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+    cat << 'SPACK_ENV' > $CHROOT/etc/profile.d/spack_setup.sh
+if [ -f /export/apps/spack/share/spack/setup-env.sh ]; then
+    . /export/apps/spack/share/spack/setup-env.sh
 fi
-SPACK_MOD
-    chmod +x $CHROOT/etc/profile.d/spack_modules.sh
+# Override for CPU microarchitecture mismatch (e.g. nehalem vs x86_64)
+module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+SPACK_ENV
+    chmod +x $CHROOT/etc/profile.d/spack_setup.sh
     
     OVERLAY_DIR="/srv/warewulf/overlays/nodeconfig/rootfs"
     mkdir -p $OVERLAY_DIR/etc/systemd/system/multi-user.target.wants

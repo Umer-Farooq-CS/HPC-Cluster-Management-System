@@ -14,18 +14,20 @@ The fundamental premise of our architecture is **"Build Once, Run Anywhere."**
 *   **Lmod**: An advanced environmental module system. It allows users to dynamically alter their `$PATH` and `$LD_LIBRARY_PATH` by simply running `module load <software>`.
 *   **NFS (`/export/apps`)**: A shared network drive hosted on the Master Node and dynamically mounted by every compute node (`pc2`, `pc3`).
 
-### The Global Profile (`spack_modules.sh`)
+### The Global Profile (`spack_setup.sh`)
 Because compute nodes boot entirely from a pristine RAM image, they do not inherently know where Spack or Lmod are located on the network drive. 
 
-To bridge this gap, we bake a global shell profile configuration (`/etc/profile.d/spack_modules.sh`) directly into the compute node's Golden Image:
+To bridge this gap, we bake a global shell profile configuration (`/etc/profile.d/spack_setup.sh`) directly into the compute node's Golden Image:
 
 ```bash
-# /etc/profile.d/spack_modules.sh
-if [ -d /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core ]; then
-    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
+# /etc/profile.d/spack_setup.sh
+if [ -f /export/apps/spack/share/spack/setup-env.sh ]; then
+    . /export/apps/spack/share/spack/setup-env.sh
 fi
+# Override for CPU microarchitecture mismatch (e.g. nehalem vs x86_64)
+module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
 ```
-This ensures that the millisecond any user or process opens a terminal on a compute node, their shell intercepts the Spack module pathways and hooks them into Lmod.
+This ensures that the millisecond any user or process opens a terminal on a compute node, their shell intercepts the Spack initialization script and hooks them into Lmod.
 
 ---
 
@@ -58,7 +60,7 @@ The cluster administrator logs into the Master Node, which has write-access to t
 A researcher SSHs into the `pc2` compute node (or submits a Slurm batch job).
 
 1.  **Check Availability**:
-    Thanks to our global `/etc/profile.d/spack_modules.sh` hotfix, the user runs `module avail` and instantly sees the new software without any manual configuration!
+    Thanks to our global `/etc/profile.d/spack_setup.sh` hotfix, the user runs `module avail` and instantly sees the new software without any manual configuration!
     ```bash
     [umer@pc2 ~]$ module avail
     ------ /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core -------
