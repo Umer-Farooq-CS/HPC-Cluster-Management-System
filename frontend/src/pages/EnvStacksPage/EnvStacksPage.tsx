@@ -26,19 +26,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Custom: 'hsl(330, 75%, 60%)',
 };
 
-const DEFAULT_MODULES = [
-  'gcc/11.5.0-xwcconl',
-  'cmake/4.3.2',
-  'hwloc/2.13.0',
-  'python/3.14.5-lddvwjv',
-  'perl/5.42.0-dadruwd',
-  'sqlite/3.53.1-mfudwzt',
-  'jq/1.8.1-jnxci33',
-  'htop/3.4.1-wpph7cx',
-  'zlib/1.3.2-ycpxie7',
-  'zstd/1.5.7-okdgpph',
-  'tar/1.35-yjcpajg'
-];
+
 
 export default function EnvStacksPage() {
   const { token } = useAuth();

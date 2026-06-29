@@ -28,9 +28,15 @@
 
 .formGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr auto;
   gap: 1.5rem;
   align-items: end;
+}
+
+@media (max-width: 900px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .inputGroup {
@@ -74,7 +80,8 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  height: 42px;
+  height: 46px; /* Match input height roughly */
+  white-space: nowrap;
 }
 
 .submitBtn:hover {
@@ -102,13 +109,22 @@
 .table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .table th, .table td {
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid var(--glass-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.table th:nth-child(1) { width: 10%; }
+.table th:nth-child(2) { width: 35%; }
+.table th:nth-child(3) { width: 25%; }
+.table th:nth-child(4) { width: 30%; }
 
 .table th {
   color: var(--text-secondary);
