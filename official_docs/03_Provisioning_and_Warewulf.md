@@ -35,13 +35,20 @@ Warewulf 4 is the daemon running on the Master Node (`warewulfd`) responsible fo
 
 Warewulf 4 modernized image management by utilizing OCI (Open Container Initiative) standards. Instead of building monolithic images from ISOs, Warewulf pulls standard Docker containers and converts them into bootable environments.
 
+### Official Base URLs (Frontend GUI)
+
+When using the "Build New Image" wizard in the Web Dashboard, you must provide a valid OCI container registry URL. Warewulf provides pre-configured HPC base containers. Use the following URLs depending on your desired OS:
+
+*   **AlmaLinux 9:** `docker://ghcr.io/warewulf/warewulf-almalinux:9`
+*   **Rocky Linux 9:** `docker://ghcr.io/warewulf/warewulf-rockylinux:9`
+
 ### Compiling an Image (CLI equivalent of the Dashboard)
 
 If you needed to do this manually without the React GUI, the commands are:
 
 ```bash
-# 1. Pull a base image from Docker Hub
-wwctl container import docker://almalinux:9 alma-base
+# 1. Pull a base image from the official Warewulf registry
+wwctl container import docker://ghcr.io/warewulf/warewulf-almalinux:9 alma-base
 
 # 2. Enter the image to install custom software (like Slurmd or Chrony)
 wwctl container exec alma-base /bin/bash

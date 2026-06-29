@@ -243,7 +243,7 @@ async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_
 
         # Step 3: Rebuild Overlays
         await websocket.send_text("[STEP 3] Rebuilding Warewulf DHCP and Node Overlays...")
-        await run_and_check("wwctl overlay build && wwctl configure --all 2>&1", "Step 3")
+        await run_and_check("wwctl overlay build && wwctl configure --all && systemctl restart warewulfd 2>&1", "Step 3")
 
         # Step 4: Slurm Configuration
         await websocket.send_text("[STEP 4] Updating Slurm Configuration with Compute Node Names...")

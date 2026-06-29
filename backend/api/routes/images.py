@@ -24,13 +24,13 @@ class ImageBuildPayload(BaseModel):
     source: str
     fastestMirror: bool = True
     maxDownloads: int = 10
-    dnfTimeout: int = 5
-    minRate: int = 10000
+    dnfTimeout: int = 300
+    minRate: int = 1000
     excludePkgs: str = "linux-firmware*"
     installEpel: bool = True
     enableCrb: bool = True
     installOhpc: bool = True
-    packages: str = "ohpc-base-compute, ohpc-slurm-client, chrony, lmod-ohpc, nhc-ohpc"
+    packages: str = "ohpc-base-compute, ohpc-slurm-client, chrony, lmod-ohpc, nhc-ohpc, ncurses"
     enabledServices: str = "munge, slurmd, chronyd"
     ntpServer: str = "192.168.20.1"
     makeStep: str = "1 -1"
@@ -158,6 +158,7 @@ async def build_image_ws(websocket: WebSocket, token: str = Query(None)):
         repo_script = f"""CHROOT=$(wwctl image show {cfg.name}) && \\
 cat > $CHROOT/tmp/setup_repo.sh << 'EOF'
 #!/bin/bash
+set -e
 {'echo "fastestmirror=True" >> /etc/dnf/dnf.conf' if cfg.fastestMirror else ''}
 echo "max_parallel_downloads={cfg.maxDownloads}" >> /etc/dnf/dnf.conf
 echo "ip_resolve=4" >> /etc/dnf/dnf.conf
@@ -166,7 +167,6 @@ echo "timeout={cfg.dnfTimeout}" >> /etc/dnf/dnf.conf
 echo "minrate={cfg.minRate}" >> /etc/dnf/dnf.conf
 {'dnf -y install ' + pkgs_to_install if cfg.installEpel or cfg.installOhpc else ''}
 {'dnf config-manager --set-enabled crb' if cfg.enableCrb else ''}
-dnf -y update
 EOF
 chmod +x $CHROOT/tmp/setup_repo.sh && \\
 wwctl image exec --build=false {cfg.name} /tmp/setup_repo.sh 2>&1 && \\
@@ -180,6 +180,7 @@ rm -f $CHROOT/tmp/setup_repo.sh"""
         inject_script = f"""CHROOT=$(wwctl image show {cfg.name}) && \\
 cat > $CHROOT/tmp/setup_inject.sh << 'EOF'
 #!/bin/bash
+set -e
 dnf -y install {cfg.packages.replace(',', ' ')}
 systemctl enable {services}
 EOF
@@ -301,7 +302,7 @@ rm -f $CHROOT/tmp/setup_dracut.sh"""
 
         # ── Step 2B: Build image ───────────────────────────────────────────────
         await websocket.send_text("[STEP 9] Compiling VNFS image and rebuilding overlays...")
-        await run_and_check(f"wwctl image build {cfg.name} && wwctl overlay build 2>&1", "Step 2B (Build image)")
+        await run_and_check(f"wwctl image build {cfg.name} && wwctl overlay build && systemctl restart warewulfd 2>&1", "Step 2B (Build image)")
 
         # ── Step 2C: Start control plane ──────────────────────────────────────
         await websocket.send_text("[STEP 10] Enabling and starting Slurm control plane...")
