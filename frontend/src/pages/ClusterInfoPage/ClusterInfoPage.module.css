@@ -1,0 +1,204 @@
+.pageContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-md);
+  animation: fadeIn var(--transition-slow);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  margin-bottom: var(--space-2xl);
+  text-align: center;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: var(--space-xs);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+/* --- Summary Dashboard --- */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-3xl);
+}
+
+.summaryCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal), background-color var(--transition-normal);
+}
+
+.summaryCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow-blue);
+  background: var(--bg-card-hover);
+}
+
+.cardIcon {
+  font-size: 2rem;
+  background: var(--accent-primary-dim);
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.cardInfo h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.cardInfo p {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stateOperational {
+  color: var(--accent-secondary) !important;
+  text-shadow: 0 0 10px var(--accent-secondary-dim);
+}
+
+/* --- Tree View --- */
+.treeContainer {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  box-shadow: var(--shadow-card);
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: var(--space-xl);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.sectionTitle::before {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 24px;
+  background: var(--accent-primary);
+  border-radius: var(--radius-sm);
+}
+
+.treeRoot {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.treeNode {
+  margin-top: var(--space-xs);
+}
+
+.treeNodeHeader {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.treeNodeClickable {
+  cursor: pointer;
+}
+
+.treeNodeClickable:hover {
+  background: var(--border-subtle);
+}
+
+.chevron {
+  display: inline-block;
+  margin-right: var(--space-sm);
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+  transition: transform var(--transition-normal);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.bullet {
+  display: inline-block;
+  margin-right: var(--space-sm);
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+
+.treeNodeLabel {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.treeNodeValue {
+  margin-left: var(--space-md);
+  color: var(--accent-secondary);
+}
+
+.treeNodeValue::before {
+  content: '→';
+  margin-right: var(--space-sm);
+  color: var(--text-muted);
+}
+
+.treeNodeChildren {
+  margin-left: 20px;
+  padding-left: 10px;
+  border-left: 1px dashed var(--border-accent);
+  margin-top: 4px;
+  animation: slideDown var(--transition-normal);
+  transform-origin: top;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: scaleY(0.9); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: var(--space-md);
+  }
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+  .treeContainer {
+    padding: var(--space-lg);
+  }
+}

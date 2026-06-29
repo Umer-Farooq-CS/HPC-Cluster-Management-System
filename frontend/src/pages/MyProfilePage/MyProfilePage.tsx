@@ -41,8 +41,6 @@ export default function MyProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // Lmod Collections
-  const [restoreTarget, setRestoreTarget] = useState('');
   const [collectionLoading, setCollectionLoading] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -91,19 +89,20 @@ export default function MyProfilePage() {
 
 
 
-  const handleRestoreCollection = async () => {
-    if (!restoreTarget.trim()) return;
+  const handleRestoreCollection = async (collectionName: string) => {
+    if (!collectionName.trim()) return;
     setCollectionLoading(true);
     setFeedback(null);
     try {
       const res = await fetch(`${apiUrl}/env-stacks/me/restore-collection`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ collection_name: restoreTarget }),
+        body: JSON.stringify({ collection_name: collectionName }),
       });
       const data = await res.json();
       if (res.ok) {
         setFeedback({ msg: data.message, type: 'success' });
+        fetchProfile();
       } else {
         setFeedback({ msg: data.detail, type: 'error' });
       }
@@ -257,21 +256,11 @@ module save default`}</pre>
               
               <button
                 className={`${styles.applyBtn} ${styles.collectionBtnGreen}`}
-                onClick={() => {
-                  setRestoreTarget('default');
-                  setTimeout(() => document.getElementById('restore-collection-btn')?.click(), 100);
-                }}
+                onClick={() => handleRestoreCollection('default')}
                 disabled={collectionLoading}
               >
                 {collectionLoading ? 'Saving...' : 'Set "default" Collection as Active Profile'}
               </button>
-              
-              {/* Hidden button to trigger the actual API call using the existing handleRestoreCollection function */}
-              <button 
-                id="restore-collection-btn" 
-                onClick={handleRestoreCollection} 
-                style={{ display: 'none' }}
-              />
             </div>
           </section>
         </div>

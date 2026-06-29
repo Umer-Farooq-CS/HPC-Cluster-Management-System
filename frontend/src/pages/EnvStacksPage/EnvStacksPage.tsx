@@ -43,7 +43,9 @@ export default function EnvStacksPage() {
   const [formDisplayName, setFormDisplayName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formCategory, setFormCategory] = useState('Custom');
-  const [formModulesText, setFormModulesText] = useState('');
+  const [formModules, setFormModules] = useState<string[]>([]);
+  const [availableModules, setAvailableModules] = useState<string[]>([]);
+  const [moduleSearchQuery, setModuleSearchQuery] = useState('');
 
   const [assigningUser, setAssigningUser] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -61,15 +63,22 @@ export default function EnvStacksPage() {
     if (res.ok) setUsers(await res.json());
   }, [apiUrl, token]);
 
+  const fetchModules = useCallback(async () => {
+    const res = await fetch(`${apiUrl}/env-stacks/modules`, { headers });
+    if (res.ok) setAvailableModules(await res.json());
+  }, [apiUrl, token]);
+
   useEffect(() => {
     fetchStacks();
     fetchUsers();
-  }, [fetchStacks, fetchUsers]);
+    fetchModules();
+  }, [fetchStacks, fetchUsers, fetchModules]);
 
   const openCreateModal = () => {
     setEditingStack(null);
     setFormName(''); setFormDisplayName(''); setFormDescription('');
-    setFormCategory('Custom'); setFormModulesText('');
+    setFormCategory('Custom'); setFormModules([]);
+    setModuleSearchQuery('');
     setShowModal(true);
   };
 
@@ -79,7 +88,8 @@ export default function EnvStacksPage() {
     setFormDisplayName(stack.display_name);
     setFormDescription(stack.description || '');
     setFormCategory(stack.category);
-    setFormModulesText(stack.modules.join('\n'));
+    setFormModules([...stack.modules]);
+    setModuleSearchQuery('');
     setShowModal(true);
   };
 
@@ -87,7 +97,7 @@ export default function EnvStacksPage() {
     e.preventDefault();
     setIsSubmitting(true);
     setFeedback('');
-    const cleanModules = formModulesText.split('\n').map(m => m.trim()).filter(m => m !== '');
+    const cleanModules = formModules.filter(m => m !== '');
     const body = JSON.stringify({
       name: formName,
       display_name: formDisplayName,
@@ -141,8 +151,17 @@ export default function EnvStacksPage() {
     }
   };
 
-  const cleanModulesPreview = formModulesText.split('\n').map(m => m.trim()).filter(m => m !== '');
-  const luaPreview = `-- ${formDisplayName || 'My Stack'}\nhelp([[${formDescription || 'Custom stack.'}]])\n\n${cleanModulesPreview.map(m => `load("${m}")`).join('\n')}`;
+  const luaPreview = `-- ${formDisplayName || 'My Stack'}\nhelp([[${formDescription || 'Custom stack.'}]])\n\n${formModules.map(m => `load("${m}")`).join('\n')}`;
+
+  const toggleModule = (mod: string) => {
+    setFormModules(prev => 
+      prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]
+    );
+  };
+
+  const filteredModules = availableModules.filter(m => 
+    m.toLowerCase().includes(moduleSearchQuery.toLowerCase())
+  );
 
   return (
     <div className={styles.page}>
@@ -333,15 +352,38 @@ ${selectedStack.modules.map(m => `load("${m}")`).join('\n')}`}
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label>Modules <span className={styles.hint}>(one per line)</span></label>
-                    <textarea 
-                      className={styles.textarea} 
-                      value={formModulesText} 
-                      onChange={e => setFormModulesText(e.target.value)} 
-                      rows={5} 
-                      placeholder={"gcc/11.5.0-xwcconl\ncmake/4.3.2"} 
-                      id="modal-modules" 
+                    <label>Modules <span className={styles.hint}>(click to select)</span></label>
+                    <input
+                      className={styles.moduleSearchInput}
+                      value={moduleSearchQuery}
+                      onChange={e => setModuleSearchQuery(e.target.value)}
+                      placeholder="Search available modules..."
+                      autoComplete="off"
                     />
+                    <div className={styles.moduleSelectionContainer}>
+                      {filteredModules.length === 0 ? (
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.5rem' }}>No modules found matching '{moduleSearchQuery}'</div>
+                      ) : (
+                        filteredModules.map(mod => {
+                          const isSelected = formModules.includes(mod);
+                          return (
+                            <div 
+                              key={mod}
+                              className={`${styles.moduleCheckboxPill} ${isSelected ? styles.selected : ''}`}
+                              onClick={() => toggleModule(mod)}
+                            >
+                              <input 
+                                type="checkbox" 
+                                className={styles.moduleCheckboxInput}
+                                checked={isSelected}
+                                readOnly
+                              />
+                              <span className={styles.moduleName}>{mod}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
 
                   <button type="submit" className={styles.btnPrimary} disabled={isSubmitting} id="submit-stack-btn">

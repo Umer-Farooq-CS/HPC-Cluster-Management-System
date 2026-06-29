@@ -80,6 +80,71 @@
   background: var(--accent-primary-dim);
 }
 
+/* Dropdown */
+.dropdownWrap {
+  position: relative;
+}
+
+.dropdownTrigger {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dropdownChevron {
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--space-xs);
+  min-width: 200px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-xs);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdownItem {
+  display: block;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.dropdownItem:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.dropdownItemActive {
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+  font-weight: 500;
+}
+
 /* Status indicator */
 .statusWrap {
   display: flex;
@@ -105,4 +170,13 @@
   font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.themeToggleWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: var(--space-md);
+  padding-left: var(--space-md);
+  border-left: 1px solid var(--border-subtle);
 }

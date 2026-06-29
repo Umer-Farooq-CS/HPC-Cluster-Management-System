@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import styles from './Navbar.module.css'
 
 export default function Navbar() {
   const { pathname } = useLocation()
   const { token, role, username, logout, isAuthenticated } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [isConnected, setIsConnected] = useState(false)
+  const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false)
 
   // Ping backend every 5 seconds to check connection status
   useEffect(() => {
@@ -51,17 +54,33 @@ export default function Navbar() {
           </li>
           {isAdmin && (
             <>
-              <li>
-                <Link to="/provision/master" className={`${styles.link} ${pathname === '/provision/master' ? styles.linkActive : ''}`}>Master Provisioning</Link>
+              <li 
+                className={styles.dropdownWrap}
+                onMouseEnter={() => setIsAdminDropdownOpen(true)}
+                onMouseLeave={() => setIsAdminDropdownOpen(false)}
+              >
+                <button className={`${styles.link} ${styles.dropdownTrigger}`}>
+                  Administration <span className={styles.dropdownChevron}>▼</span>
+                </button>
+                {isAdminDropdownOpen && (
+                  <ul className={styles.dropdownMenu}>
+                    <li>
+                      <Link to="/provision/master" className={`${styles.dropdownItem} ${pathname === '/provision/master' ? styles.dropdownItemActive : ''}`}>Master Provisioning</Link>
+                    </li>
+                    <li>
+                      <Link to="/provision/slave" className={`${styles.dropdownItem} ${pathname === '/provision/slave' ? styles.dropdownItemActive : ''}`}>Compute Nodes</Link>
+                    </li>
+                    <li>
+                      <Link to="/users" className={`${styles.dropdownItem} ${pathname === '/users' ? styles.dropdownItemActive : ''}`}>User Management</Link>
+                    </li>
+                    <li>
+                      <Link to="/env-stacks" className={`${styles.dropdownItem} ${pathname === '/env-stacks' ? styles.dropdownItemActive : ''}`}>Env Profiles</Link>
+                    </li>
+                  </ul>
+                )}
               </li>
               <li>
-                <Link to="/provision/slave" className={`${styles.link} ${pathname === '/provision/slave' ? styles.linkActive : ''}`}>Compute Nodes</Link>
-              </li>
-              <li>
-                <Link to="/users" className={`${styles.link} ${pathname === '/users' ? styles.linkActive : ''}`}>User Management</Link>
-              </li>
-              <li>
-                <Link to="/env-stacks" className={`${styles.link} ${pathname === '/env-stacks' ? styles.linkActive : ''}`}>Env Profiles</Link>
+                <Link to="/cluster-info" className={`${styles.link} ${pathname === '/cluster-info' ? styles.linkActive : ''}`}>Cluster Info</Link>
               </li>
             </>
           )}
@@ -100,6 +119,16 @@ export default function Navbar() {
               </span>
             </>
           )}
+
+          {/* Theme Toggle */}
+          <div className={styles.themeToggleWrap}>
+            <span style={{ fontSize: '1.1rem' }}>☀️</span>
+            <label className="toggle-switch" aria-label="Toggle Theme">
+              <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+              <span className="toggle-slider"></span>
+            </label>
+            <span style={{ fontSize: '1.1rem' }}>🌙</span>
+          </div>
         </div>
       </div>
     </nav>

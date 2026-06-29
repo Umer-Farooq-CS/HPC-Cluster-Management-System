@@ -26,10 +26,8 @@ export default function DashboardPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <button className={styles.backBtn} onClick={() => navigate('/provision/jobs')}>
-            ← Back to Jobs
-          </button>
-          <h1 className={styles.title}>Slurm Dashboard</h1>
+          <h1 className={styles.title}>Slurm Web Dashboard</h1>
+          <p className={styles.subtitle}>Real-time cluster monitoring and telemetry</p>
         </div>
         <div className={styles.headerRight}>
           <span className={styles.statusBadge}>
@@ -45,25 +43,47 @@ export default function DashboardPage() {
       {/* Telemetry Stats Header */}
       <div className={styles.statsRow}>
         <div className={`${styles.statCard} glass-panel`}>
-          <span className={styles.statLabel}>Active Jobs</span>
-          <div className={styles.statValue}>
-            14 <span className={styles.statTrend}>+2</span>
+          <div className={styles.statHeader}>
+            <span className={styles.statLabel}>Active Jobs</span>
+            <span className={styles.statTrend}>+2</span>
+          </div>
+          <div className={styles.statValue}>14</div>
+          <div className={styles.progressBarWrap}>
+            <div className={styles.progressBar} style={{ width: '40%', background: 'var(--accent-primary)' }} />
           </div>
           <div className={styles.statSubtext}>4 Running • 10 Pending</div>
         </div>
+
         <div className={`${styles.statCard} glass-panel`}>
-          <span className={styles.statLabel}>Node Health</span>
-          <div className={styles.statValue}>4/5</div>
+          <div className={styles.statHeader}>
+            <span className={styles.statLabel}>Node Health</span>
+          </div>
+          <div className={styles.statValue}>4 <span className={styles.statValueDim}>/ 5</span></div>
+          <div className={styles.progressBarWrap}>
+            <div className={styles.progressBar} style={{ width: '80%', background: 'var(--accent-secondary)' }} />
+          </div>
           <div className={styles.statSubtext}>1 Node Draining</div>
         </div>
+
         <div className={`${styles.statCard} glass-panel`}>
-          <span className={styles.statLabel}>Cluster Utilization</span>
+          <div className={styles.statHeader}>
+            <span className={styles.statLabel}>Cluster Utilization</span>
+          </div>
           <div className={styles.statValue}>88%</div>
+          <div className={styles.progressBarWrap}>
+            <div className={styles.progressBar} style={{ width: '88%', background: 'var(--accent-warning)' }} />
+          </div>
           <div className={styles.statSubtext}>CPU Bound</div>
         </div>
+
         <div className={`${styles.statCard} glass-panel`}>
-          <span className={styles.statLabel}>Est. Queue Time</span>
+          <div className={styles.statHeader}>
+            <span className={styles.statLabel}>Est. Queue Time</span>
+          </div>
           <div className={styles.statValue}>~2m</div>
+          <div className={styles.progressBarWrap}>
+            <div className={styles.progressBar} style={{ width: '15%', background: 'var(--accent-primary)' }} />
+          </div>
           <div className={styles.statSubtext}>Normal Partition</div>
         </div>
       </div>
@@ -71,8 +91,11 @@ export default function DashboardPage() {
       <div className={styles.iframeContainer}>
         {!isLoaded && !error && (
           <div className={styles.loader}>
-            <div className={styles.spinner} />
-            <p>Connecting to Slurm Web on Master Node (192.168.10.2)...</p>
+            <div className={styles.radarContainer}>
+              <div className={styles.radarCircle}></div>
+              <div className={styles.radarSweep}></div>
+            </div>
+            <p>Scanning Slurm Web on Master Node (192.168.10.2)...</p>
           </div>
         )}
         

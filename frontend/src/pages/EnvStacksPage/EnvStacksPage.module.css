@@ -47,7 +47,7 @@
 /* Two-column layout */
 .mainGrid {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-xl);
   align-items: start;
 }
@@ -246,18 +246,17 @@
   background: var(--bg-surface);
 }
 
-.table th:nth-child(1) { width: 25%; }
-.table th:nth-child(2) { width: 15%; }
+.table th:nth-child(1) { width: 18%; }
+.table th:nth-child(2) { width: 17%; }
 .table th:nth-child(3) { width: 30%; }
-.table th:nth-child(4) { width: 30%; }
+.table th:nth-child(4) { width: 35%; }
 
 .table td {
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--border-subtle);
   vertical-align: middle;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 .table tr:last-child td { border-bottom: none; }
@@ -267,14 +266,17 @@
   font-family: var(--font-mono);
   font-size: 0.85rem;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .roleBadge {
+  display: inline-block;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .role_super_admin { background: hsl(207,90%,54%,0.15); color: var(--accent-primary); }
@@ -288,6 +290,7 @@
   font-size: 0.72rem;
   font-weight: 600;
   border: 1px solid;
+  white-space: nowrap;
 }
 
 .noProfile {
@@ -425,42 +428,67 @@
 .input:disabled { opacity: 0.6; cursor: not-allowed; }
 .textarea { resize: vertical; }
 
-.moduleRow {
-  display: flex;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
-}
-
-.removeModuleBtn {
-  background: transparent;
+/* === Module Selection UI === */
+.moduleSearchInput {
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--space-sm);
-  cursor: pointer;
-  font-size: 0.8rem;
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.removeModuleBtn:hover:not(:disabled) { border-color: var(--accent-danger); color: var(--accent-danger); }
-.removeModuleBtn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.addModuleBtn {
-  background: transparent;
-  border: 1px dashed var(--border-accent);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   border-radius: var(--radius-md);
-  padding: var(--space-xs) var(--space-md);
-  cursor: pointer;
-  font-size: 0.8rem;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.875rem;
   width: 100%;
-  text-align: center;
-  transition: all var(--transition-fast);
-  margin-top: var(--space-xs);
+  margin-bottom: var(--space-sm);
 }
 
-.addModuleBtn:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+.moduleSearchInput:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.moduleSelectionContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  background: var(--bg-surface);
+}
+
+.moduleCheckboxPill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.moduleCheckboxPill:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+}
+
+.moduleCheckboxPill.selected {
+  background: hsla(207, 90%, 54%, 0.1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.moduleCheckboxInput {
+  cursor: pointer;
+}
+
+.moduleName {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
 
 /* Lua Preview */
 .previewPane {

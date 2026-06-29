@@ -10,7 +10,7 @@
 }
 
 /* --- CSS Custom Properties (Design Tokens) --- */
-:root {
+:root, [data-theme='dark'] {
   /* Color Palette — Dark HPC Aesthetic */
   --bg-base:        hsl(222, 22%, 8%);
   --bg-surface:     hsl(222, 20%, 11%);
@@ -80,6 +80,51 @@
   --transition-slow:   400ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+[data-theme='light'] {
+  /* Color Palette — Light Premium Aesthetic */
+  --bg-base:        hsl(222, 20%, 98%);
+  --bg-surface:     hsl(0, 0%, 100%);
+  --bg-card:        hsl(0, 0%, 100%);
+  --bg-card-hover:  hsl(222, 18%, 95%);
+  --bg-input:       hsl(222, 20%, 96%);
+
+  --border-subtle:  hsl(222, 15%, 90%);
+  --border-accent:  hsl(222, 15%, 80%);
+  
+  /* Glassmorphism */
+  --glass-bg:       hsl(0, 0%, 100%, 0.7);
+  --glass-border:   hsl(222, 15%, 85%, 0.5);
+  --glass-shadow:   0 8px 32px 0 hsla(222, 22%, 4%, 0.05);
+
+  /* Brand Colors - Adjusted for contrast in light mode */
+  --accent-primary:   hsl(207, 90%, 48%);
+  --accent-secondary: hsl(168, 80%, 35%);
+  --accent-warning:   hsl(38, 92%, 45%);
+  --accent-danger:    hsl(0, 75%, 50%);
+
+  --accent-primary-dim:   hsl(207, 90%, 48%, 0.1);
+  --accent-secondary-dim: hsl(168, 80%, 35%, 0.1);
+
+  /* Text */
+  --text-primary:   hsl(222, 22%, 8%);
+  --text-secondary: hsl(222, 15%, 35%);
+  --text-muted:     hsl(222, 10%, 55%);
+  --text-inverse:   hsl(220, 15%, 92%);
+
+  /* Gradients */
+  --gradient-hero: linear-gradient(135deg, hsl(222,20%,98%) 0%, hsl(230,25%,94%) 100%);
+  --gradient-card-master: linear-gradient(135deg, hsl(207,90%,96%) 0%, hsl(222,20%,98%) 100%);
+  --gradient-card-slave:  linear-gradient(135deg, hsl(168,60%,96%) 0%, hsl(222,20%,98%) 100%);
+  --gradient-glow-blue:   radial-gradient(ellipse 80% 60% at 50% 0%, hsl(207,90%,48%,0.08), transparent);
+  --gradient-glow-teal:   radial-gradient(ellipse 80% 60% at 50% 0%, hsl(168,80%,35%,0.08), transparent);
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px hsl(222,22%,4%,0.06);
+  --shadow-glow-blue: 0 0 40px hsl(207,90%,48%,0.1);
+  --shadow-glow-teal: 0 0 40px hsl(168,80%,35%,0.1);
+  --shadow-button: 0 4px 16px hsl(207,90%,48%,0.2);
+}
+
 /* --- Base Typography --- */
 html {
   font-size: 16px;
@@ -94,6 +139,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 #root {

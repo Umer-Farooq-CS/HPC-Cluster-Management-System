@@ -40,6 +40,13 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .headerRight {
@@ -93,19 +100,26 @@
 }
 
 .statCard {
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  transition: transform var(--transition-fast);
+  gap: var(--space-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .statCard:hover {
   transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.statHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .statLabel {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -113,7 +127,7 @@
 }
 
 .statValue {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: var(--text-primary);
   display: flex;
@@ -122,13 +136,34 @@
   line-height: 1;
 }
 
+.statValueDim {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .statTrend {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--accent-secondary);
   background: var(--accent-secondary-dim);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
+}
+
+.progressBarWrap {
+  width: 100%;
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin: var(--space-xs) 0;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 1s ease-out;
 }
 
 .statSubtext {
@@ -166,21 +201,59 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  background: var(--bg-card);
 }
 
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-subtle);
-  border-top-color: var(--accent-primary);
+.radarContainer {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.radarCircle {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  border: 2px solid var(--accent-primary-dim);
+  box-shadow: 0 0 16px var(--accent-primary-dim);
 }
 
-@keyframes spin {
+.radarCircle::before {
+  content: '';
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  border: 1px dashed var(--accent-primary);
+  opacity: 0.5;
+}
+
+.radarSweep {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary));
+  transform-origin: left center;
+  animation: radarSpin 2s linear infinite;
+}
+
+.radarSweep::after {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: conic-gradient(from 0deg, transparent 0deg, var(--accent-primary-dim) 90deg, transparent 90deg);
+  transform: translateY(30px);
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 

@@ -108,8 +108,10 @@ Navigate to **Env Profiles** in the admin navigation bar (`/env-stacks`).
 
 ### Stack Creation Modal
 - Fill in: Identifier (slug), Display Name, Category, Description.
-- Add module entries one per row. An autocomplete datalist suggests known modules.
-- **Live Lua Preview** on the right updates in real-time as you type.
+- **Dynamic Module Discovery**: The backend securely connects to the master node and runs `module -t avail` to fetch a live, up-to-date list of all Spack and custom Lmod modules currently available on the cluster.
+- **Searchable UI**: The modal presents a search bar that filters the live modules.
+- **Click to Select**: Modules are displayed as selectable pills. Click a module to toggle its selection for the profile, completely eliminating typos.
+- **Live Lua Preview** on the right updates in real-time as you select modules.
 - On submit: the stack is saved to the database and the `.lua` file is written to `/export/apps/custom_modules/` on the master node via SSH.
 
 ### User Assignment (Right Panel)
@@ -168,6 +170,7 @@ From the UI:
 | `DELETE` | `/api/v1/env-stacks/{id}` | Admin | Delete stack + remove `.lua` |
 | `POST` | `/api/v1/env-stacks/{id}/assign/{username}` | Admin | Assign profile to user |
 | `DELETE` | `/api/v1/env-stacks/assign/{username}` | Admin | Reset user to base Spack |
+| `GET` | `/api/v1/env-stacks/modules` | Any user | Fetch live Spack/Lmod modules via `module -t avail` |
 | `GET` | `/api/v1/env-stacks/me` | Self | Get own profile + available stacks |
 | `POST` | `/api/v1/env-stacks/me/select` | Self | Select own profile |
 | `POST` | `/api/v1/env-stacks/me/save-collection` | Self | `module save <name>` |

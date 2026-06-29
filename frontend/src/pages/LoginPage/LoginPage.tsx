@@ -48,10 +48,14 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.backgroundGlow}></div>
       <div className={styles.loginCard}>
         <div className={styles.header}>
+          <div className={styles.logoWrap}>
+            <span className={styles.logoIcon} aria-hidden="true">⬡</span>
+          </div>
           <h1>HPC Cluster Manager</h1>
-          <p>Sign in to your account</p>
+          <p>Sign in to your dashboard</p>
         </div>
 
         {error && <div className={styles.error}>{error}</div>}

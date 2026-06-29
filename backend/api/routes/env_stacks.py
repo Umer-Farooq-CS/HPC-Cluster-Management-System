@@ -405,6 +405,33 @@ async def unassign_stack_from_user(
 # USER SELF-SERVICE ROUTES
 # ---------------------------------------------------------------------------
 
+@router.get("/modules", response_model=list[str])
+async def get_available_modules(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Dynamically fetch all available Spack and custom Lmod modules from the master node.
+    Requires admin or regular user access (any authenticated user can view modules).
+    """
+    cmd = "source /etc/profile.d/spack_setup.sh && module -t avail 2>&1"
+    try:
+        results = await _ssh_run([cmd])
+        if not results or not results[0]:
+            return []
+            
+        modules = set()
+        for line in results[0].splitlines():
+            line = line.strip()
+            # Ignore empty lines, directory paths (ending in :), and general category names (ending in /)
+            if not line or line.endswith(":") or line.endswith("/"):
+                continue
+            modules.add(line)
+            
+        return sorted(list(modules))
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch available modules: {e}")
+        return []
+
 @router.get("/me", response_model=dict)
 async def get_my_profile(
     current_user: User = Depends(get_current_user),
