@@ -104,6 +104,10 @@ SENTINEL_END   = "# --- HPC PROFILE MANAGED BLOCK END ---"
 def _build_bashrc_block(stack_name: str) -> str:
     """Generates the managed block content for ~/.bashrc"""
     return f"""{SENTINEL_START}
+# Source Spack/Lmod setup for non-interactive shells (like Slurm jobs)
+if [ -f /etc/profile.d/spack_setup.sh ]; then
+    source /etc/profile.d/spack_setup.sh
+fi
 module purge
 module load {stack_name}
 {SENTINEL_END}"""
@@ -111,6 +115,10 @@ module load {stack_name}
 def _build_base_bashrc_block() -> str:
     """Reset block — just loads the base spack module path, no specific stack."""
     return f"""{SENTINEL_START}
+# Source Spack/Lmod setup for non-interactive shells (like Slurm jobs)
+if [ -f /etc/profile.d/spack_setup.sh ]; then
+    source /etc/profile.d/spack_setup.sh
+fi
 # No environment profile assigned — using base Spack module path
 if [ -d /export/apps/spack ]; then
     module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
@@ -505,6 +513,10 @@ async def user_restore_lmod_collection(
         raise HTTPException(status_code=400, detail="collection_name is required")
 
     block = f"""{SENTINEL_START}
+# Source Spack/Lmod setup for non-interactive shells (like Slurm jobs)
+if [ -f /etc/profile.d/spack_setup.sh ]; then
+    source /etc/profile.d/spack_setup.sh
+fi
 module restore {collection_name}
 {SENTINEL_END}"""
 
