@@ -24,21 +24,21 @@ DEFAULT_STACKS = [
         "display_name": "Base Developer Toolchain",
         "description": "Core build tools: GCC compiler, CMake build system, and hardware locality library. The starting point for any compilation task.",
         "category": "Developer",
-        "modules": "gcc/11.2.0,cmake,hwloc",
+        "modules": "gcc/11.5.0-xwcconl,cmake/4.3.2,hwloc/2.13.0",
     },
     {
-        "name": "python-scientific",
-        "display_name": "Python Scientific Stack",
-        "description": "Python 3.10 with NumPy, SciPy, and Matplotlib for numerical computing and data visualization.",
+        "name": "core-scripting",
+        "display_name": "Python & Perl Scripting",
+        "description": "Core runtime environments for Python and Perl scripting, database interactions via SQLite, and utilities like JQ.",
         "category": "Scientific",
-        "modules": "gcc/11.2.0,python/3.10.8,py-numpy,py-scipy,py-matplotlib",
+        "modules": "python/3.14.5-lddvwjv,perl/5.42.0-dadruwd,sqlite/3.53.1-mfudwzt,jq/1.8.1-jnxci33",
     },
     {
-        "name": "mpi-parallel",
-        "display_name": "MPI Parallel Computing",
-        "description": "GCC + OpenMPI for writing and running parallel MPI applications across multiple compute nodes.",
-        "category": "MPI",
-        "modules": "gcc/11.2.0,openmpi,hwloc,cmake",
+        "name": "data-utilities",
+        "display_name": "Compression & System Utilities",
+        "description": "Standard file packaging, compression libraries (Zlib, Zstd, XZ), and system monitoring tools like HTOP.",
+        "category": "Custom",
+        "modules": "htop/3.4.1-wpph7cx,zlib/1.3.2-ycpxie7,zstd/1.5.7-okdgpph,tar/1.35-yjcpajg",
     },
 ]
 
@@ -179,12 +179,42 @@ async def _inject_bashrc(username: str, block: str):
 # ---------------------------------------------------------------------------
 
 async def seed_default_stacks(db: AsyncSession):
-    """Insert the 3 default stacks if they don't already exist."""
+    """Insert or update default stacks, and cleanup old deprecated ones."""
+    default_names = [s["name"] for s in DEFAULT_STACKS]
+    
+    # 1. Update or Insert current default stacks
     for s in DEFAULT_STACKS:
         result = await db.execute(select(EnvStack).where(EnvStack.name == s["name"]))
-        if not result.scalars().first():
+        existing = result.scalars().first()
+        if existing:
+            existing.display_name = s["display_name"]
+            existing.description = s["description"]
+            existing.category = s["category"]
+            existing.modules = s["modules"]
+        else:
             db.add(EnvStack(**s))
+            
+    # 2. Cleanup deprecated default stacks
+    deprecated_names = ["python-scientific", "mpi-parallel"]
+    for dep_name in deprecated_names:
+        if dep_name not in default_names:
+            result = await db.execute(select(EnvStack).where(EnvStack.name == dep_name))
+            dep = result.scalars().first()
+            if dep:
+                await db.delete(dep)
+                
     await db.commit()
+
+    # 3. Write/Regenerate Lua files for all seeded stacks
+    for s in DEFAULT_STACKS:
+        result = await db.execute(select(EnvStack).where(EnvStack.name == s["name"]))
+        stack = result.scalars().first()
+        if stack:
+            try:
+                await _write_lua_file(stack)
+            except Exception as e:
+                print(f"[WARN] Failed to write Lua file for seeded stack {stack.name}: {e}")
+
 
 # ---------------------------------------------------------------------------
 # ADMIN ROUTES
