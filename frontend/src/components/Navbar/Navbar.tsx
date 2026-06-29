@@ -11,22 +11,25 @@ export default function Navbar() {
   // Ping backend every 5 seconds to check connection status
   useEffect(() => {
     const checkConnection = async () => {
-      if (!token) return;
       try {
-        const res = await fetch(`https://${window.location.hostname}/api/v1/slaves/arp`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        if (res.status !== 502) setIsConnected(true)
-        else setIsConnected(false)
+        const url = token
+          ? `https://${window.location.hostname}/api/v1/slaves/arp`
+          : `https://${window.location.hostname}/api/v1/env-stacks/`;
+        const headers: Record<string, string> = token
+          ? { 'Authorization': `Bearer ${token}` }
+          : {};
+        const res = await fetch(url, { headers });
+        if (res.status !== 502 && res.status !== 504) setIsConnected(true);
+        else setIsConnected(false);
       } catch (err) {
-        setIsConnected(false)
+        setIsConnected(false);
       }
     }
 
     checkConnection()
     const interval = setInterval(checkConnection, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [token])
 
   const isAdmin = role === 'admin' || role === 'super_admin';
 
