@@ -28,10 +28,10 @@ When an element of the HPC cluster breaks, the first step is always to check the
 
 ## 2. Common Failures & Resolutions
 
-### Problem 1: Compute Nodes are in DRAIN or INVALID_REG state
-When you run `sinfo`, your compute nodes show as `DRAIN` instead of `IDLE`.
-- **Cause A (Munge/Time Skew):** Slurm relies on Munge for authentication, and Munge relies on exact time synchronization. If a compute node's clock is off by more than 5 minutes from the Master Node, Munge rejects the connection.
-  - **Resolution:** SSH into the compute node and force a clock sync: `chronyc makestep`.
+### Problem 1: Compute Nodes are in DOWN+NOT_RESPONDING, DRAIN, or INVALID_REG state
+When you run `sinfo`, your compute nodes show as `DOWN*` or `DRAIN` instead of `IDLE`.
+- **Cause A (Munge/Time Skew):** Slurm relies on Munge for authentication, and Munge relies on exact time synchronization. If a compute node's clock is off by more than 5 minutes from the Master Node, Munge rejects the connection. This almost always happens on first boot if `chrony` fails to step the clock.
+  - **Resolution:** SSH into the compute node and force a clock sync: `chronyc makestep`. To fix it permanently, ensure `makestep 1 -1` is present in the Master Node's Warewulf overlay template `/srv/warewulf/overlays/nodeconfig/rootfs/etc/chrony.conf.ww` and run `wwctl overlay build`.
 - **Cause B (Memory Mismatch):** The `slurm.conf` says the node has 16GB of RAM, but the node actually has 15.5GB available. Slurm will drain the node to prevent OOM errors.
   - **Resolution:** Edit `slurm.conf` on the Master, lower the `RealMemory` value slightly, run `scontrol reconfigure`, and then run `scontrol update NodeName=<node> State=RESUME`.
 
@@ -48,6 +48,16 @@ A user logs in, but the dashboard is entirely broken or throws a Ruby error.
   semodule -i ood_custom.pp
   sudo /opt/ood/nginx_stage/sbin/nginx_stage pun -u <username> -a restart
   ```
+
+### Problem 4: Slurm Jobs Fail with "No such file or directory" for Spack/Python
+When running a batch job via `srun`, it fails on some nodes because it cannot find the executable, even though the same path works on the Master Node or head node.
+- **Cause:** The NFS network drive (e.g., `/export/apps`) failed to mount on the compute node. Systemd `.mount` and `.automount` units require the physical mount point directory (the empty folder) to exist in the node's filesystem *before* they can attach the network drive. If the OS image was built without that empty directory, the mount silently fails.
+- **Resolution:** Inject the empty directory directly into the Warewulf `nodeconfig` overlay so it is dynamically created on boot for all images:
+  ```bash
+  mkdir -p /srv/warewulf/overlays/nodeconfig/rootfs/export/apps
+  wwctl overlay build
+  ```
+  Then reboot the node or manually create the folder and run `mount -a`.
 
 ---
 

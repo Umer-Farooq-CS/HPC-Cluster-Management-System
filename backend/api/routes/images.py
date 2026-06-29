@@ -190,14 +190,16 @@ rm -f $CHROOT/tmp/setup_inject.sh"""
 
         # ── Step 1D: Overlays ──────────────────────────────────────────────────
         await websocket.send_text("[STEP 4] Configuring system overlays (Munge, Slurm, NTP)...")
-        overlay_cmd = f"""wwctl overlay import -o --parents nodeconfig /etc/munge/munge.key && \\
+        overlay_cmd = f"""mkdir -p /srv/warewulf/overlays/nodeconfig/rootfs/export/apps && \\
+wwctl overlay import -o --parents nodeconfig /etc/munge/munge.key && \\
 wwctl overlay chown nodeconfig /etc/munge/munge.key "$(id -u munge):$(id -g munge)" && \\
 wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/slurm/slurmd.ww /etc/sysconfig/slurmd.ww && \\
 wwctl profile set --yes nodes --tagadd slurmctld="{settings.PROV_IP}" && \\
 wwctl overlay import -o --parents nodeconfig /etc/subuid && \\
 wwctl overlay import -o --parents nodeconfig /etc/subgid && \\
 wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/chrony.conf.ww /etc/chrony.conf.ww && \\
-wwctl profile set --yes nodes --tagadd ntpserver="{settings.PROV_IP}" 2>&1"""
+wwctl profile set --yes nodes --tagadd ntpserver="{settings.PROV_IP}" && \\
+echo "makestep {cfg.makeStep}" >> /srv/warewulf/overlays/nodeconfig/rootfs/etc/chrony.conf.ww 2>&1"""
         await run_and_check(overlay_cmd, "Step 1D (Overlays)")
 
         # ── Step 1E: memlock + pam_slurm ──────────────────────────────────────

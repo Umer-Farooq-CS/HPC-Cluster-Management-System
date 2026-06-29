@@ -76,14 +76,14 @@ rm -f $CHROOT/tmp/setup_inject.sh"""
     # Configure NTP to point to the Master Node's IP
     wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/chrony.conf.ww /etc/chrony.conf.ww
     wwctl profile set --yes nodes --tagadd ntpserver="{config.PROV_IP}"
+    echo "makestep 1 -1" >> /srv/warewulf/overlays/nodeconfig/rootfs/etc/chrony.conf.ww
     
     # Fix NetworkManager timeout issues on compute nodes
     wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/network/NetworkManager-wait-online.service.d/override.conf /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
     
     # Configure NFS Mounts via Native systemd Units (instead of overriding /etc/fstab)
-    # This prevents overriding Warewulf's auto-generated /etc/fstab which mounts /home and /opt.
-    CHROOT=$(wwctl image show almalinux-9)
-    mkdir -p $CHROOT/export/apps
+    # Ensure the mount point exists dynamically via the Warewulf overlay
+    mkdir -p /srv/warewulf/overlays/nodeconfig/rootfs/export/apps
     
     # Global Spack environment setup
     mkdir -p $CHROOT/etc/profile.d

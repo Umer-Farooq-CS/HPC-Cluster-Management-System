@@ -66,7 +66,9 @@ An overlay is a set of files that are dynamically injected into the node's RAM *
 ### System Overlays
 These are applied to all nodes. 
 - Example: `/etc/munge/munge.key`. Munge requires every node to have the exact same cryptographic key to authenticate Slurm jobs.
-- The web app modifies the master system overlay using `wwctl overlay edit system ...`.
+- Example: `/etc/chrony.conf.ww`. We inject `makestep 1 -1` here so chrony aggressively steps the clock on boot, preventing 7-hour clock skews that break Munge authentication.
+- Example: `/export/apps`. We inject this empty directory into the rootfs via the overlay so that systemd has a valid physical mount point to attach the NFS drive on boot, avoiding "No such file or directory" errors in Slurm.
+- The web app modifies the master system overlay using `wwctl overlay edit system ...` or `wwctl overlay import`.
 
 ### Node-Specific Overlays
 These are applied only to a specific MAC address.

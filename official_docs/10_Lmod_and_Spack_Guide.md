@@ -84,11 +84,13 @@ Lmod is how users interact with the installed software. It alters environment va
 You may notice that running `module avail` on the **Master Node** shows hundreds of packages, but running `module avail` on a compute node (e.g., **pc2**) only shows a few basic packages (like `cmake` and `hwloc`).
 
 ### Root Cause
-This occurs when the `MODULEPATH` environment variable is not fully populated on the compute nodes. The compute nodes are stateless and managed by Warewulf. Although the Spack installation directory (`/export/apps/spack`) is successfully mounted via NFS on the compute nodes, the compute node shells need to know to source the Spack initialization script upon login.
+This occurs due to a combination of two factors:
+1. **Missing Initialization:** The compute node shells need to source the Spack initialization script upon login.
+2. **CPU Microarchitecture Mismatch:** Spack optimizes software for the exact CPU it runs on. It may detect the Master Node as a generic `x86_64` CPU, but detect compute nodes (e.g., `pc2`) as a slightly different microarchitecture (e.g., `nehalem` due to virtualization settings). Consequently, Spack looks for a `nehalem` module folder on the compute node, which doesn't exist because everything was compiled on the Master Node.
 
 ### Resolution
 
-The profile script (`/etc/profile.d/spack_setup.sh`) must be present on all compute nodes. This file sources the Spack environment and sets up Lmod.
+The profile script (`/etc/profile.d/spack_setup.sh`) must be present on all compute nodes. This file sources the Spack environment and forces Lmod to use the generic `x86_64` module paths compiled by the Master Node.
 
 **Step 1: Ensure the script is in the Warewulf Node Overlay on the Master Node**
 The file has already been added to the master node's Warewulf overlay at:
@@ -99,6 +101,8 @@ It contains the following:
 if [ -f /export/apps/spack/share/spack/setup-env.sh ]; then
     . /export/apps/spack/share/spack/setup-env.sh
 fi
+# Override for CPU microarchitecture mismatch (e.g. nehalem vs x86_64)
+module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core
 ```
 
 **Step 2: Apply the overlay to the compute nodes**
