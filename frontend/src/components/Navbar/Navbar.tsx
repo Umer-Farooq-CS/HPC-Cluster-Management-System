@@ -36,6 +36,11 @@ export default function Navbar() {
 
   const isAdmin = role === 'admin' || role === 'super_admin';
 
+  // Close dropdown when route changes
+  const handleDropdownLinkClick = () => {
+    setIsAdminDropdownOpen(false);
+  };
+
   return (
     <nav className={styles.nav} aria-label="Primary navigation">
       <div className={styles.inner}>
@@ -56,25 +61,27 @@ export default function Navbar() {
             <>
               <li 
                 className={styles.dropdownWrap}
-                onMouseEnter={() => setIsAdminDropdownOpen(true)}
-                onMouseLeave={() => setIsAdminDropdownOpen(false)}
               >
-                <button className={`${styles.link} ${styles.dropdownTrigger}`}>
-                  Administration <span className={styles.dropdownChevron}>▼</span>
+                <button 
+                  className={`${styles.link} ${styles.dropdownTrigger} ${isAdminDropdownOpen ? styles.dropdownTriggerActive : ''}`}
+                  onClick={() => setIsAdminDropdownOpen(prev => !prev)}
+                  aria-expanded={isAdminDropdownOpen}
+                >
+                  Administration <span className={`${styles.dropdownChevron} ${isAdminDropdownOpen ? styles.dropdownChevronOpen : ''}`}>▼</span>
                 </button>
                 {isAdminDropdownOpen && (
                   <ul className={styles.dropdownMenu}>
                     <li>
-                      <Link to="/provision/master" className={`${styles.dropdownItem} ${pathname === '/provision/master' ? styles.dropdownItemActive : ''}`}>Master Provisioning</Link>
+                      <Link to="/provision/master" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/master' ? styles.dropdownItemActive : ''}`}>Master Provisioning</Link>
                     </li>
                     <li>
-                      <Link to="/provision/slave" className={`${styles.dropdownItem} ${pathname === '/provision/slave' ? styles.dropdownItemActive : ''}`}>Compute Nodes</Link>
+                      <Link to="/provision/slave" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/slave' ? styles.dropdownItemActive : ''}`}>Compute Nodes</Link>
                     </li>
                     <li>
-                      <Link to="/users" className={`${styles.dropdownItem} ${pathname === '/users' ? styles.dropdownItemActive : ''}`}>User Management</Link>
+                      <Link to="/users" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/users' ? styles.dropdownItemActive : ''}`}>User Management</Link>
                     </li>
                     <li>
-                      <Link to="/env-stacks" className={`${styles.dropdownItem} ${pathname === '/env-stacks' ? styles.dropdownItemActive : ''}`}>Env Profiles</Link>
+                      <Link to="/env-stacks" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/env-stacks' ? styles.dropdownItemActive : ''}`}>Env Profiles</Link>
                     </li>
                   </ul>
                 )}
@@ -90,19 +97,18 @@ export default function Navbar() {
         </ul>
 
         {/* Status pill & Auth */}
-        <div className={styles.statusWrap}>
+        <div className={styles.rightSection}>
           {isAuthenticated ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                User: <strong>{username}</strong> <span style={{opacity: 0.7, fontSize: '0.75rem'}}>({role?.replace('_', ' ')})</span>
-              </span>
+            <div className={styles.userSection}>
+              <div className={styles.userInfo}>
+                <span className={styles.userDot} />
+                <span className={styles.userName}>{username}</span>
+                <span className={styles.userRole}>{role?.replace('_', ' ')}</span>
+              </div>
               <button 
                 onClick={logout}
-                style={{
-                  background: 'transparent', border: '1px solid var(--border-light)', 
-                  color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '4px',
-                  cursor: 'pointer', fontSize: '0.8rem'
-                }}
+                className={styles.logoutBtn}
+                aria-label="Log out"
               >
                 Logout
               </button>
@@ -122,12 +128,11 @@ export default function Navbar() {
 
           {/* Theme Toggle */}
           <div className={styles.themeToggleWrap}>
-            <span style={{ fontSize: '1.1rem' }}>☀️</span>
+            <span className={styles.themeIcon}>{theme === 'light' ? '◑' : '○'}</span>
             <label className="toggle-switch" aria-label="Toggle Theme">
               <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
               <span className="toggle-slider"></span>
             </label>
-            <span style={{ fontSize: '1.1rem' }}>🌙</span>
           </div>
         </div>
       </div>

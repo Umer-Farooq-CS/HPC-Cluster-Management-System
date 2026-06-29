@@ -1,24 +1,30 @@
+/* ==========================================================
+   Navbar — fully theme-aware, uses CSS vars throughout
+   ========================================================== */
+
 .nav {
   position: sticky;
   top: 0;
-  z-index: 100;
-  background: hsl(222, 22%, 8%, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  z-index: 200;
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
+  /* Slight glass effect on top of the theme surface */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .inner {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 var(--space-xl);
-  height: 60px;
+  height: 62px;
   display: flex;
   align-items: center;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
 }
 
-/* Brand */
+/* --- Brand --- */
 .brand {
   display: flex;
   align-items: center;
@@ -28,14 +34,14 @@
 }
 
 .brandIcon {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   color: var(--accent-primary);
   line-height: 1;
-  filter: drop-shadow(0 0 8px hsl(207,90%,54%,0.6));
+  filter: drop-shadow(0 0 8px hsl(207,90%,54%,0.5));
 }
 
 .brandText {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -45,24 +51,25 @@
   color: var(--accent-primary);
 }
 
-/* Links */
+/* --- Nav links list --- */
 .links {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 2px;
   list-style: none;
   flex: 1;
 }
 
 .link {
   display: inline-block;
-  padding: var(--space-xs) var(--space-md);
+  padding: 6px 14px;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-sm);
   transition: color var(--transition-fast), background var(--transition-fast);
+  white-space: nowrap;
 }
 
 .link:hover {
@@ -80,7 +87,7 @@
   background: var(--accent-primary-dim);
 }
 
-/* Dropdown */
+/* --- Dropdown --- */
 .dropdownWrap {
   position: relative;
 }
@@ -91,43 +98,54 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  font-family: var(--font-sans);
+}
+
+.dropdownTriggerActive {
+  color: var(--accent-primary) !important;
+  background: var(--accent-primary-dim) !important;
 }
 
 .dropdownChevron {
-  font-size: 0.6rem;
-  opacity: 0.7;
+  font-size: 0.55rem;
+  opacity: 0.6;
+  display: inline-block;
+  transition: transform var(--transition-fast);
+}
+
+.dropdownChevronOpen {
+  transform: rotate(180deg);
 }
 
 .dropdownMenu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   left: 0;
-  margin-top: var(--space-xs);
-  min-width: 200px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  min-width: 210px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-xs);
+  box-shadow: 0 8px 32px hsl(222,22%,4%,0.2);
+  padding: 6px;
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  animation: slideDown 0.2s ease;
+  animation: dropFadeIn 0.18s ease;
+  z-index: 300;
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes dropFadeIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .dropdownItem {
   display: block;
-  padding: var(--space-sm) var(--space-md);
-  font-size: 0.85rem;
+  padding: 9px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-sm);
@@ -137,24 +155,33 @@
 .dropdownItem:hover {
   background: var(--bg-card-hover);
   color: var(--text-primary);
+  padding-left: 18px;
 }
 
 .dropdownItemActive {
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
-/* Status indicator */
+/* --- Right section (user + theme toggle) --- */
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* When NOT authenticated: the status pill */
 .statusWrap {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-md);
+  padding: 5px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
-  margin-left: auto;
 }
 
 .statusDot {
@@ -172,11 +199,80 @@
   white-space: nowrap;
 }
 
+/* When authenticated: user section */
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+}
+
+.userDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-secondary);
+  box-shadow: 0 0 6px var(--accent-secondary);
+  flex-shrink: 0;
+}
+
+.userName {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.userRole {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 1px 7px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  text-transform: capitalize;
+}
+
+/* Prominent logout button */
+.logoutBtn {
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-danger);
+  background: transparent;
+  border: 1.5px solid var(--accent-danger);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+  white-space: nowrap;
+}
+
+.logoutBtn:hover {
+  background: var(--accent-danger);
+  color: #fff;
+  box-shadow: 0 2px 12px hsl(0,75%,58%,0.35);
+}
+
+/* --- Theme toggle --- */
 .themeToggleWrap {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  margin-left: var(--space-md);
+  gap: 6px;
   padding-left: var(--space-md);
   border-left: 1px solid var(--border-subtle);
+}
+
+.themeIcon {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1;
+  width: 16px;
+  text-align: center;
 }

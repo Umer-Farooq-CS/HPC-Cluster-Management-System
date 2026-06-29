@@ -15,7 +15,7 @@ const mockClusterData = {
   nodes: [
     {
       id: "master-01",
-      name: "Master Node (master-01)",
+      name: "master-01",
       type: "Control Plane",
       state: "Active",
       details: {
@@ -23,17 +23,19 @@ const mockClusterData = {
         kernel: "5.14.0-362.13.1.el9_3.x86_64",
         ip: "192.168.10.2",
         cpus: 16,
+        gpus: "None",
         ram: "64 GB",
         storage: "2 TB SSD",
+        activeJobs: 0
       }
     },
     {
       id: "compute-01",
-      name: "Compute Node (compute-01)",
+      name: "compute-01",
       type: "Worker",
       state: "Active",
       details: {
-        os: "AlmaLinux 9.4 (Stateless Image)",
+        os: "AlmaLinux 9.4 (Stateless)",
         kernel: "5.14.0-362.13.1.el9_3.x86_64",
         ip: "192.168.10.11",
         cpus: 32,
@@ -45,11 +47,11 @@ const mockClusterData = {
     },
     {
       id: "compute-02",
-      name: "Compute Node (compute-02)",
+      name: "compute-02",
       type: "Worker",
       state: "Active",
       details: {
-        os: "AlmaLinux 9.4 (Stateless Image)",
+        os: "AlmaLinux 9.4 (Stateless)",
         kernel: "5.14.0-362.13.1.el9_3.x86_64",
         ip: "192.168.10.12",
         cpus: 32,
@@ -59,131 +61,222 @@ const mockClusterData = {
         activeJobs: 1
       }
     }
+  ],
+  storage: [
+    { mount: "/home", source: "master-01:/home", type: "NFS" },
+    { mount: "/opt/ohpc/pub", source: "master-01:/opt/ohpc/pub", type: "NFS" }
+  ],
+  network: [
+    { interface: "eth0", purpose: "Management Network" },
+    { interface: "ib0", purpose: "Infiniband Fabric" }
   ]
 };
 
-// --- Components ---
-
-const TreeNode = ({ label, value, children }: { label: string, value?: string | number, children?: React.ReactNode }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const hasChildren = Boolean(children);
-
-  return (
-    <div className={styles.treeNode}>
-      <div 
-        className={`${styles.treeNodeHeader} ${hasChildren ? styles.treeNodeClickable : ''}`}
-        onClick={() => hasChildren && setIsOpen(!isOpen)}
-      >
-        {hasChildren && (
-          <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>
-            ▶
-          </span>
-        )}
-        {!hasChildren && <span className={styles.bullet}>•</span>}
-        <span className={styles.treeNodeLabel}>{label}</span>
-        {value !== undefined && <span className={styles.treeNodeValue}>{value}</span>}
-      </div>
-      
-      {hasChildren && isOpen && (
-        <div className={styles.treeNodeChildren}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
-
 export default function ClusterInfoPage() {
-  const { general, nodes } = mockClusterData;
+  const { general, nodes, storage, network } = mockClusterData;
+  const [activeTab, setActiveTab] = useState('general');
+
+  const renderContent = () => {
+    if (activeTab === 'general') {
+      return (
+        <div className={styles.detailPanel}>
+          <h2 className={styles.panelTitle}>General Overview</h2>
+          <div className={styles.gridContainer}>
+            <div className={styles.dataCard}>
+              <span className={styles.dataLabel}>Cluster State</span>
+              <span className={styles.dataValueHighlight}>{general.state}</span>
+            </div>
+            <div className={styles.dataCard}>
+              <span className={styles.dataLabel}>Uptime</span>
+              <span className={styles.dataValue}>{general.uptime}</span>
+            </div>
+            <div className={styles.dataCard}>
+              <span className={styles.dataLabel}>Total Nodes</span>
+              <span className={styles.dataValue}>{general.totalNodes}</span>
+            </div>
+            <div className={styles.dataCard}>
+              <span className={styles.dataLabel}>Total Cores</span>
+              <span className={styles.dataValue}>{general.totalCpus}</span>
+            </div>
+            <div className={styles.dataCard}>
+              <span className={styles.dataLabel}>Total GPUs</span>
+              <span className={styles.dataValue}>{general.totalGpus}</span>
+            </div>
+            <div className={styles.dataCard}>
+              <span className={styles.dataLabel}>Total Memory</span>
+              <span className={styles.dataValue}>{general.totalRam}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab.startsWith('node-')) {
+      const nodeId = activeTab.replace('node-', '');
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return null;
+
+      return (
+        <div className={styles.detailPanel}>
+          <div className={styles.panelHeader}>
+            <h2 className={styles.panelTitle}>{node.name}</h2>
+            <span className={styles.badge}>{node.type}</span>
+            <span className={styles.badgeSuccess}>{node.state}</span>
+          </div>
+          
+          <div className={styles.sectionGroup}>
+            <h3 className={styles.sectionHeading}>System Specs</h3>
+            <div className={styles.gridContainer}>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>Operating System</span>
+                <span className={styles.dataValue}>{node.details.os}</span>
+              </div>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>Kernel</span>
+                <span className={styles.dataValue}>{node.details.kernel}</span>
+              </div>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>IP Address</span>
+                <span className={styles.dataValue}>{node.details.ip}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.sectionGroup}>
+            <h3 className={styles.sectionHeading}>Hardware</h3>
+            <div className={styles.gridContainer}>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>CPUs</span>
+                <span className={styles.dataValue}>{node.details.cpus} Cores</span>
+              </div>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>RAM</span>
+                <span className={styles.dataValue}>{node.details.ram}</span>
+              </div>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>Storage</span>
+                <span className={styles.dataValue}>{node.details.storage}</span>
+              </div>
+              <div className={styles.dataCard}>
+                <span className={styles.dataLabel}>GPUs</span>
+                <span className={styles.dataValue}>{node.details.gpus}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'storage') {
+      return (
+        <div className={styles.detailPanel}>
+          <h2 className={styles.panelTitle}>Storage Mounts</h2>
+          <div className={styles.tableWrapper}>
+            <table className={styles.dataTable}>
+              <thead>
+                <tr>
+                  <th>Mount Point</th>
+                  <th>Source</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {storage.map((st, idx) => (
+                  <tr key={idx}>
+                    <td>{st.mount}</td>
+                    <td>{st.source}</td>
+                    <td>{st.type}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'network') {
+      return (
+        <div className={styles.detailPanel}>
+          <h2 className={styles.panelTitle}>Networking</h2>
+          <div className={styles.tableWrapper}>
+            <table className={styles.dataTable}>
+              <thead>
+                <tr>
+                  <th>Interface</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                {network.map((net, idx) => (
+                  <tr key={idx}>
+                    <td>{net.interface}</td>
+                    <td>{net.purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className={styles.pageContainer}>
       <header className={styles.header}>
         <h1 className={styles.title}>Cluster Information</h1>
-        <p className={styles.subtitle}>Deep dive into the live state and specifications of the HPC cluster.</p>
+        <p className={styles.subtitle}>Detailed infrastructure specifications and live state</p>
       </header>
 
-      {/* High-level Summary Dashboard */}
-      <div className={styles.summaryGrid}>
-        <div className={styles.summaryCard}>
-          <div className={styles.cardIcon}>⚡</div>
-          <div className={styles.cardInfo}>
-            <h3>State</h3>
-            <p className={styles.stateOperational}>{general.state}</p>
+      <div className={styles.guiContainer}>
+        {/* Sidebar Navigation */}
+        <div className={styles.sidebar}>
+          <div className={styles.navGroup}>
+            <h3 className={styles.navGroupTitle}>Overview</h3>
+            <button 
+              className={`${styles.navItem} ${activeTab === 'general' ? styles.navItemActive : ''}`}
+              onClick={() => setActiveTab('general')}
+            >
+              General Info
+            </button>
+          </div>
+
+          <div className={styles.navGroup}>
+            <h3 className={styles.navGroupTitle}>Infrastructure</h3>
+            <button 
+              className={`${styles.navItem} ${activeTab === 'storage' ? styles.navItemActive : ''}`}
+              onClick={() => setActiveTab('storage')}
+            >
+              Storage Mounts
+            </button>
+            <button 
+              className={`${styles.navItem} ${activeTab === 'network' ? styles.navItemActive : ''}`}
+              onClick={() => setActiveTab('network')}
+            >
+              Networking
+            </button>
+          </div>
+
+          <div className={styles.navGroup}>
+            <h3 className={styles.navGroupTitle}>Nodes</h3>
+            {nodes.map(node => (
+              <button 
+                key={node.id}
+                className={`${styles.navItem} ${activeTab === `node-${node.id}` ? styles.navItemActive : ''}`}
+                onClick={() => setActiveTab(`node-${node.id}`)}
+              >
+                {node.name}
+              </button>
+            ))}
           </div>
         </div>
-        <div className={styles.summaryCard}>
-          <div className={styles.cardIcon}>🖥️</div>
-          <div className={styles.cardInfo}>
-            <h3>Total Nodes</h3>
-            <p>{general.totalNodes}</p>
-          </div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div className={styles.cardIcon}>🧠</div>
-          <div className={styles.cardInfo}>
-            <h3>CPUs / GPUs</h3>
-            <p>{general.totalCpus} / {general.totalGpus}</p>
-          </div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div className={styles.cardIcon}>💾</div>
-          <div className={styles.cardInfo}>
-            <h3>RAM / Storage</h3>
-            <p>{general.totalRam} / {general.totalStorage}</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Hierarchical Tree View */}
-      <div className={styles.treeContainer}>
-        <h2 className={styles.sectionTitle}>Infrastructure Tree</h2>
-        
-        <div className={styles.treeRoot}>
-          <TreeNode label="HPC Cluster" value={general.state}>
-            
-            <TreeNode label="General Info">
-              <TreeNode label="Uptime" value={general.uptime} />
-              <TreeNode label="Total Nodes" value={general.totalNodes} />
-              <TreeNode label="Total Cores" value={general.totalCpus} />
-              <TreeNode label="Total Memory" value={general.totalRam} />
-            </TreeNode>
-
-            <TreeNode label="Nodes">
-              {nodes.map(node => (
-                <TreeNode key={node.id} label={node.name} value={node.state}>
-                  <TreeNode label="Type" value={node.type} />
-                  <TreeNode label="Operating System" value={node.details.os} />
-                  <TreeNode label="Kernel" value={node.details.kernel} />
-                  <TreeNode label="IP Address" value={node.details.ip} />
-                  
-                  <TreeNode label="Hardware Specs">
-                    <TreeNode label="CPUs" value={node.details.cpus} />
-                    {node.details.gpus && <TreeNode label="GPUs" value={node.details.gpus} />}
-                    <TreeNode label="RAM" value={node.details.ram} />
-                    <TreeNode label="Storage" value={node.details.storage} />
-                  </TreeNode>
-
-                  {node.details.activeJobs !== undefined && (
-                    <TreeNode label="Workload">
-                      <TreeNode label="Active Jobs" value={node.details.activeJobs} />
-                    </TreeNode>
-                  )}
-                </TreeNode>
-              ))}
-            </TreeNode>
-
-            <TreeNode label="Networking">
-              <TreeNode label="Interface" value="eth0 (Management)" />
-              <TreeNode label="Interface" value="ib0 (Infiniband)" />
-            </TreeNode>
-
-            <TreeNode label="Storage Mounts">
-              <TreeNode label="/home" value="NFS (master-01:/home)" />
-              <TreeNode label="/opt/ohpc/pub" value="NFS (master-01:/opt/ohpc/pub)" />
-            </TreeNode>
-
-          </TreeNode>
+        {/* Detail Content Area */}
+        <div className={styles.contentArea}>
+          {renderContent()}
         </div>
       </div>
     </div>

@@ -111,8 +111,8 @@
   --text-muted:     hsl(222, 10%, 55%);
   --text-inverse:   hsl(220, 15%, 92%);
 
-  /* Gradients */
-  --gradient-hero: linear-gradient(135deg, hsl(222,20%,98%) 0%, hsl(230,25%,94%) 100%);
+  /* Gradients — light mode uses colored gradients so text-clip works */
+  --gradient-hero: linear-gradient(135deg, hsl(207, 90%, 40%) 0%, hsl(168, 80%, 32%) 100%);
   --gradient-card-master: linear-gradient(135deg, hsl(207,90%,96%) 0%, hsl(222,20%,98%) 100%);
   --gradient-card-slave:  linear-gradient(135deg, hsl(168,60%,96%) 0%, hsl(222,20%,98%) 100%);
   --gradient-glow-blue:   radial-gradient(ellipse 80% 60% at 50% 0%, hsl(207,90%,48%,0.08), transparent);
