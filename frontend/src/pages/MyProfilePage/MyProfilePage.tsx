@@ -42,8 +42,6 @@ export default function MyProfilePage() {
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   // Lmod Collections
-  const [collections, setCollections] = useState<string>('');
-  const [collectionName, setCollectionName] = useState('');
   const [restoreTarget, setRestoreTarget] = useState('');
   const [collectionLoading, setCollectionLoading] = useState(false);
 
@@ -63,18 +61,9 @@ export default function MyProfilePage() {
     }
   }, [apiUrl, token]);
 
-  const fetchCollections = useCallback(async () => {
-    const res = await fetch(`${apiUrl}/env-stacks/me/collections`, { headers });
-    if (res.ok) {
-      const data = await res.json();
-      setCollections(data.collections || '');
-    }
-  }, [apiUrl, token]);
-
   useEffect(() => {
     fetchProfile();
-    fetchCollections();
-  }, [fetchProfile, fetchCollections]);
+  }, [fetchProfile]);
 
   const handleApplyProfile = async () => {
     if (!selectedStack) return;
@@ -100,28 +89,7 @@ export default function MyProfilePage() {
     }
   };
 
-  const handleSaveCollection = async () => {
-    if (!collectionName.trim()) return;
-    setCollectionLoading(true);
-    setFeedback(null);
-    try {
-      const res = await fetch(`${apiUrl}/env-stacks/me/save-collection`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ collection_name: collectionName }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setFeedback({ msg: data.message, type: 'success' });
-        setCollectionName('');
-        fetchCollections();
-      } else {
-        setFeedback({ msg: data.detail, type: 'error' });
-      }
-    } finally {
-      setCollectionLoading(false);
-    }
-  };
+
 
   const handleRestoreCollection = async () => {
     if (!restoreTarget.trim()) return;
