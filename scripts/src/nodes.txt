@@ -1,5 +1,0 @@
-# Hostname, MAC Address, IP Address
-pc2,D4:C9:EF:DB:19:3D,192.168.20.10
-pc3,D4:C9:EF:D7:CD:F5,192.168.20.11
-
-# ... you can add hundreds of nodes here

@@ -189,7 +189,7 @@ rm -f $CHROOT/tmp/setup_inject.sh"""
         await run_and_check(inject_script, "Step 1C (Inject Packages)")
 
         # ── Step 1D: Overlays ──────────────────────────────────────────────────
-        await websocket.send_text("[STEP 4] Configuring system overlays (Munge, Slurm, NTP)...")
+        await websocket.send_text("[STEP 4] Configuring system overlays (Munge, Slurm, NTP, Mounts)...")
         overlay_cmd = f"""mkdir -p /srv/warewulf/overlays/nodeconfig/rootfs/export/apps && \\
 wwctl overlay import -o --parents nodeconfig /etc/munge/munge.key && \\
 wwctl overlay chown nodeconfig /etc/munge/munge.key "$(id -u munge):$(id -g munge)" && \\
@@ -199,7 +199,37 @@ wwctl overlay import -o --parents nodeconfig /etc/subuid && \\
 wwctl overlay import -o --parents nodeconfig /etc/subgid && \\
 wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/chrony.conf.ww /etc/chrony.conf.ww && \\
 wwctl profile set --yes nodes --tagadd ntpserver="{settings.PROV_IP}" && \\
-echo "makestep {cfg.makeStep}" >> /srv/warewulf/overlays/nodeconfig/rootfs/etc/chrony.conf.ww 2>&1"""
+echo "makestep {cfg.makeStep}" >> /srv/warewulf/overlays/nodeconfig/rootfs/etc/chrony.conf.ww && \\
+wwctl overlay import -o --parents nodeconfig /opt/ohpc/pub/examples/network/NetworkManager-wait-online.service.d/override.conf /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf && \\
+OVERLAY_DIR="/srv/warewulf/overlays/nodeconfig/rootfs" && \\
+mkdir -p $OVERLAY_DIR/etc/systemd/system/multi-user.target.wants && \\
+cat << 'UNIT' > $OVERLAY_DIR/etc/systemd/system/export-apps.mount
+[Unit]
+Description=NFS Mount for Shared Applications
+After=network.target
+
+[Mount]
+What={settings.PROV_IP}:/export/apps
+Where=/export/apps
+Type=nfs
+Options=nfsvers=4,nodev,nosuid,bg,nofail,_netdev
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+cat << 'AUTO' > $OVERLAY_DIR/etc/systemd/system/export-apps.automount
+[Unit]
+Description=Automount for Shared Applications
+After=network.target
+
+[Automount]
+Where=/export/apps
+TimeoutIdleSec=600
+
+[Install]
+WantedBy=multi-user.target
+AUTO
+ln -sf ../export-apps.automount $OVERLAY_DIR/etc/systemd/system/multi-user.target.wants/export-apps.automount 2>&1"""
         await run_and_check(overlay_cmd, "Step 1D (Overlays)")
 
         # ── Step 1E: memlock + pam_slurm ──────────────────────────────────────

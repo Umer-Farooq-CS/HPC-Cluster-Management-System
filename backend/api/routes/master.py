@@ -93,11 +93,13 @@ async def deploy_master_ws(websocket: WebSocket, token: str = Query(None)):
         await websocket.send_text("[STEP 1] Configuring Data and Provisioning interfaces...")
         # Since NM connections might lock out on modification, we apply them safely
         net_cmd = f"""
-        nmcli connection modify eno1 +ipv4.addresses {cfg.dataIp}/{cfg.dataIpCidr} 2>&1
-        nmcli connection modify eno1 +ipv4.addresses {cfg.provIp}/{cfg.provIpCidr} 2>&1
-        nmcli connection modify eno1 ipv4.gateway {cfg.gateway} 2>&1
-        nmcli connection modify eno1 ipv4.dns "{cfg.dnsServers}" 2>&1
-        nmcli connection up eno1 2>&1 || true
+        IFACE=$(ip -o -4 addr show | grep {cfg.masterIp} | awk '{{print $2}}' | head -n 1)
+        CONN=$(nmcli -g NAME,DEVICE con show | grep ":$IFACE$" | cut -d: -f1 | head -n1)
+        nmcli connection modify "$CONN" +ipv4.addresses {cfg.dataIp}/{cfg.dataIpCidr} 2>&1
+        nmcli connection modify "$CONN" +ipv4.addresses {cfg.provIp}/{cfg.provIpCidr} 2>&1
+        nmcli connection modify "$CONN" ipv4.gateway {cfg.gateway} 2>&1
+        nmcli connection modify "$CONN" ipv4.dns "{cfg.dnsServers}" 2>&1
+        nmcli connection up "$CONN" 2>&1 || true
         """
         await run_and_check(net_cmd, "Step 1 (Network Config)")
 
@@ -107,7 +109,7 @@ async def deploy_master_ws(websocket: WebSocket, token: str = Query(None)):
         if cfg.disableFirewall:
             repo_cmd += "systemctl disable --now firewalld 2>&1\n"
         if cfg.installEpel:
-            repo_cmd += "dnf -y install epel-release 2>&1\n"
+            repo_cmd += "dnf -y install epel-release dnf-plugins-core 2>&1\n"
         if cfg.enableCrb:
             repo_cmd += "dnf config-manager --set-enabled crb 2>&1\n"
         repo_cmd += "dnf -y update 2>&1"
@@ -116,6 +118,7 @@ async def deploy_master_ws(websocket: WebSocket, token: str = Query(None)):
         # ── Step 3: NTP Configuration ──────────────────────────────────────────
         await websocket.send_text("[STEP 3] Configuring Chrony NTP Server...")
         ntp_cmd = f"""
+        dnf -y install chrony 2>&1
         cat > /etc/chrony.conf << 'NTP_CONF'
 server 0.pool.ntp.org iburst
 server 1.pool.ntp.org iburst
@@ -143,8 +146,9 @@ NTP_CONF
         # Configure slurmctld
         ohpc_cmd += """
         MASTER_HOSTNAME=$(hostname -s)
-        cp -f /etc/slurm/slurm.conf.example /etc/slurm/slurm.conf
-        sed -i "s/SlurmctldHost=localhost/SlurmctldHost=$MASTER_HOSTNAME/" /etc/slurm/slurm.conf
+        cp -f /etc/slurm/slurm.conf.ohpc /etc/slurm/slurm.conf
+        cp -f /etc/slurm/cgroup.conf.example /etc/slurm/cgroup.conf
+        sed -i "s/SlurmctldHost=\\S\\+/SlurmctldHost=$MASTER_HOSTNAME/" /etc/slurm/slurm.conf
         systemctl enable --now munge 2>&1
         """
         await run_and_check(ohpc_cmd, "Step 4 (OpenHPC & Slurm)")
@@ -153,6 +157,7 @@ NTP_CONF
         await websocket.send_text("[STEP 5] Installing and configuring Warewulf...")
         ww_cmd = f"""
         dnf -y install warewulf-ohpc hwloc-ohpc yq 2>&1
+        install -d -m 0755 /var/lib/tftpboot
         
         # Write clean warewulf.conf using inline python yaml editor
         python3 -c '
@@ -172,8 +177,19 @@ with open("/etc/warewulf/warewulf.conf", "w") as f:
     yaml.dump(conf, f, default_flow_style=False)
 '
         # Create base profile
+        sed -i "s/defaults,noauto,nofail,ro/defaults,nofail,ro/" /etc/warewulf/nodes.conf
+        yq -i '.nodeprofiles.default.kernel.args -= ["quiet"]' /etc/warewulf/nodes.conf
+        echo "log-debug" >> /etc/dnsmasq.d/ww4-debug.conf || true
+        
+        wwctl profile add nodes --profile default --comment 'Nodes profile'
+        wwctl overlay create nodeconfig
+        wwctl profile set --yes nodes --system-overlays nodeconfig --runtime-overlays syncuser
         wwctl profile set --yes nodes --image almalinux-9 --netname default --netmask {cfg.wwNetmask} --gateway {cfg.provIp} 2>&1
         systemctl enable --now warewulfd 2>&1
+        
+        bash /etc/profile.d/ssh_setup.sh || true
+        echo '* soft memlock unlimited' >> /etc/security/limits.d/40-ohpc-limits.conf
+        echo '* hard memlock unlimited' >> /etc/security/limits.d/40-ohpc-limits.conf
         """
         await run_and_check(ww_cmd, "Step 5 (Warewulf Install)")
 
@@ -227,6 +243,13 @@ export MODULEPATH=/export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Co
 CRON
         chmod +x /etc/cron.hourly/sync_ood_modules
         /etc/cron.hourly/sync_ood_modules || true
+        
+        dnf -y install nhc-ohpc 2>&1
+        echo 'module(load="imudp")' >> /etc/rsyslog.d/ohpc.conf
+        echo 'input(type="imudp" port="514")' >> /etc/rsyslog.d/ohpc.conf
+        systemctl restart rsyslog
+        echo 'HealthCheckProgram=/usr/sbin/nhc' >> /etc/slurm/slurm.conf
+        echo 'HealthCheckInterval=300' >> /etc/slurm/slurm.conf
         """
         await run_and_check(nfs_cmd, "Step 6 (NFS, Spack & OOD Setup)")
 
