@@ -231,6 +231,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: fixed;
 }
 
 .table th {
@@ -245,10 +246,18 @@
   background: var(--bg-surface);
 }
 
+.table th:nth-child(1) { width: 25%; }
+.table th:nth-child(2) { width: 15%; }
+.table th:nth-child(3) { width: 30%; }
+.table th:nth-child(4) { width: 30%; }
+
 .table td {
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--border-subtle);
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table tr:last-child td { border-bottom: none; }

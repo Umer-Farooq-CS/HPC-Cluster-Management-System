@@ -55,7 +55,7 @@ export default function EnvStacksPage() {
   const [formDisplayName, setFormDisplayName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formCategory, setFormCategory] = useState('Custom');
-  const [formModules, setFormModules] = useState<string[]>(['']);
+  const [formModulesText, setFormModulesText] = useState('');
 
   const [assigningUser, setAssigningUser] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -81,7 +81,7 @@ export default function EnvStacksPage() {
   const openCreateModal = () => {
     setEditingStack(null);
     setFormName(''); setFormDisplayName(''); setFormDescription('');
-    setFormCategory('Custom'); setFormModules(['']);
+    setFormCategory('Custom'); setFormModulesText('');
     setShowModal(true);
   };
 
@@ -91,7 +91,7 @@ export default function EnvStacksPage() {
     setFormDisplayName(stack.display_name);
     setFormDescription(stack.description || '');
     setFormCategory(stack.category);
-    setFormModules(stack.modules.length ? stack.modules : ['']);
+    setFormModulesText(stack.modules.join('\n'));
     setShowModal(true);
   };
 
@@ -99,7 +99,7 @@ export default function EnvStacksPage() {
     e.preventDefault();
     setIsSubmitting(true);
     setFeedback('');
-    const cleanModules = formModules.filter(m => m.trim() !== '');
+    const cleanModules = formModulesText.split('\n').map(m => m.trim()).filter(m => m !== '');
     const body = JSON.stringify({
       name: formName,
       display_name: formDisplayName,
@@ -153,7 +153,8 @@ export default function EnvStacksPage() {
     }
   };
 
-  const luaPreview = `-- ${formDisplayName || 'My Stack'}\nhelp([[${formDescription || 'Custom stack.'}]])\n\n${formModules.filter(m => m.trim()).map(m => `load("${m}")`).join('\n')}`;
+  const cleanModulesPreview = formModulesText.split('\n').map(m => m.trim()).filter(m => m !== '');
+  const luaPreview = `-- ${formDisplayName || 'My Stack'}\nhelp([[${formDescription || 'Custom stack.'}]])\n\n${cleanModulesPreview.map(m => `load("${m}")`).join('\n')}`;
 
   return (
     <div className={styles.page}>
@@ -344,35 +345,15 @@ ${selectedStack.modules.map(m => `load("${m}")`).join('\n')}`}
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label>Modules <span className={styles.hint}>(one per row)</span></label>
-                    {formModules.map((mod, idx) => (
-                      <div key={idx} className={styles.moduleRow}>
-                        <input
-                          className={styles.input}
-                          list="known-modules"
-                          value={mod}
-                          onChange={e => {
-                            const updated = [...formModules];
-                            updated[idx] = e.target.value;
-                            setFormModules(updated);
-                          }}
-                          placeholder="e.g. gcc/11.2.0"
-                          id={`module-input-${idx}`}
-                        />
-                        <datalist id="known-modules">
-                          {DEFAULT_MODULES.map(m => <option key={m} value={m} />)}
-                        </datalist>
-                        <button
-                          type="button"
-                          className={styles.removeModuleBtn}
-                          onClick={() => setFormModules(formModules.filter((_, i) => i !== idx))}
-                          disabled={formModules.length === 1}
-                        >✕</button>
-                      </div>
-                    ))}
-                    <button type="button" className={styles.addModuleBtn} onClick={() => setFormModules([...formModules, ''])} id="add-module-btn">
-                      + Add Module
-                    </button>
+                    <label>Modules <span className={styles.hint}>(one per line)</span></label>
+                    <textarea 
+                      className={styles.textarea} 
+                      value={formModulesText} 
+                      onChange={e => setFormModulesText(e.target.value)} 
+                      rows={5} 
+                      placeholder={"gcc/11.5.0-xwcconl\ncmake/4.3.2"} 
+                      id="modal-modules" 
+                    />
                   </div>
 
                   <button type="submit" className={styles.btnPrimary} disabled={isSubmitting} id="submit-stack-btn">

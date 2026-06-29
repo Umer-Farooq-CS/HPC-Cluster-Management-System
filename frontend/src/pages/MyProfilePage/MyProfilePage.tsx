@@ -179,6 +179,8 @@ export default function MyProfilePage() {
           <span>
             {currentStack ? (
               <><strong style={{ color: currentColor }}>{currentStack.display_name}</strong> <span className={styles.pillSub}>active</span></>
+            ) : profile?.env_profile === 'default' ? (
+              <><strong style={{ color: 'var(--accent-secondary)' }}>Custom Default Collection</strong> <span className={styles.pillSub}>active</span></>
             ) : (
               <span className={styles.pillSub}>Base Spack Environment (no profile)</span>
             )}
@@ -263,127 +265,45 @@ export default function MyProfilePage() {
               )}
             </button>
           </section>
-
-          {/* Bashrc Preview */}
-          {selectedStack && selectedStack !== 'none' && (
-            <section className={`${styles.card} glass-panel`}>
-              <h2 className={styles.cardTitle}><span className={styles.cardTitleIcon}>{'</>'}</span> ~/.bashrc Preview</h2>
-              <p className={styles.cardDesc}>This block will be written to your <code className={styles.code}>~/.bashrc</code> upon applying.</p>
-              <pre className={styles.bashrcPreview}>
-{`# --- HPC PROFILE MANAGED BLOCK START ---
-module purge
-module load ${selectedStack}
-# --- HPC PROFILE MANAGED BLOCK END ---`}
-              </pre>
-            </section>
-          )}
         </div>
 
-        {/* === Right Column: Module Explorer + Collections === */}
+        {/* === Right Column: Streamlined Collections === */}
         <div className={styles.rightCol}>
-          {/* Module Explorer for selected stack */}
           <section className={`${styles.card} glass-panel`}>
-            <h2 className={styles.cardTitle}><span className={styles.cardTitleIcon}>⬡</span> Module Explorer</h2>
-            {selectedStack && selectedStack !== 'none' ? (() => {
-              const stack = profile?.available_stacks.find(s => s.name === selectedStack);
-              if (!stack) return <p className={styles.emptyMsg}>Stack not found.</p>;
-              const color = CATEGORY_COLORS[stack.category] || CATEGORY_COLORS.Custom;
-              return (
-                <div>
-                  <div className={styles.explorerHeader}>
-                    <span style={{ color, fontWeight: 600 }}>{CATEGORY_ICONS[stack.category]} {stack.display_name}</span>
-                    <span className={styles.moduleCount}>{stack.modules.length} modules</span>
-                  </div>
-                  <div className={styles.moduleList}>
-                    {stack.modules.map((m, i) => (
-                      <div key={m} className={styles.moduleEntry} style={{ animationDelay: `${i * 40}ms` }}>
-                        <span className={styles.moduleIdx}>{String(i + 1).padStart(2, '0')}</span>
-                        <span className={styles.moduleName}>{m}</span>
-                        <span className={styles.moduleArrow}>→</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={styles.luaGeneratedSection}>
-                    <label className={styles.luaLabel}>Generated Lua Metamodule</label>
-                    <pre className={styles.luaMini}>
-{`load("${stack.modules.join('")\nload("')}")`}
-                    </pre>
-                  </div>
-                </div>
-              );
-            })() : (
-              <p className={styles.emptyMsg}>Select a stack on the left to inspect its modules.</p>
-            )}
-          </section>
-
-          {/* Lmod Collections */}
-          <section className={`${styles.card} glass-panel`}>
-            <h2 className={styles.cardTitle}><span className={styles.cardTitleIcon}>💾</span> Lmod Collections</h2>
+            <h2 className={styles.cardTitle}><span className={styles.cardTitleIcon}>💾</span> Use Custom Saved State (Collections)</h2>
             <p className={styles.cardDesc}>
-              Save your current loaded modules as a named collection using <code className={styles.code}>module save</code>, then restore it at any time.
+              If the pre-built stacks don't fit your needs, you can set your own custom saved state to auto-load in Open OnDemand and SSH.
             </p>
-
-            {/* Save collection */}
-            <div className={styles.collectionRow}>
-              <input
-                className={styles.collectionInput}
-                value={collectionName}
-                onChange={e => setCollectionName(e.target.value.replace(/\s+/g, '_'))}
-                placeholder="collection-name"
-                id="save-collection-name"
-              />
-              <button
-                className={styles.collectionBtn}
-                onClick={handleSaveCollection}
-                disabled={collectionLoading || !collectionName.trim()}
-                id="save-collection-btn"
-              >
-                Save Collection
-              </button>
-            </div>
-
-            {/* Saved collections list */}
-            <div className={styles.collectionOutputBox}>
-              <label className={styles.collectionLabel}>Saved Collections (module savelist)</label>
-              <pre className={styles.collectionOutput}>{collections || 'No collections saved yet.'}</pre>
-            </div>
-
-            {/* Restore */}
-            <div className={styles.restoreRow}>
-              <label className={styles.collectionLabel}>Set as default login environment</label>
-              <div className={styles.collectionRow}>
-                <input
-                  className={styles.collectionInput}
-                  value={restoreTarget}
-                  onChange={e => setRestoreTarget(e.target.value)}
-                  placeholder="collection-name to restore"
-                  id="restore-collection-name"
-                />
-                <button
-                  className={`${styles.collectionBtn} ${styles.collectionBtnGreen}`}
-                  onClick={handleRestoreCollection}
-                  disabled={collectionLoading || !restoreTarget.trim()}
-                  id="restore-collection-btn"
-                >
-                  Set as Default
-                </button>
-              </div>
-            </div>
-
-            {/* Quick reference */}
+            
             <div className={styles.quickRef}>
-              <label className={styles.luaLabel}>Quick Terminal Reference</label>
-              <pre className={styles.quickRefPre}>{`# Save current modules as a named collection
-module save my_project_env
-
-# See all your saved collections
-module savelist
-
-# Restore a collection
-module restore my_project_env
-
-# Auto-load on login — save as 'default'
+              <label className={styles.luaLabel}>Step 1: Save your state in the terminal</label>
+              <pre className={styles.quickRefPre}>{`# Run this in your HPC terminal after loading modules
 module save default`}</pre>
+            </div>
+            
+            <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+              <h3 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Step 2: Set as Auto-Load</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                Once you have saved your 'default' collection, click below to set it as your active profile. It will load automatically for all jobs and terminal sessions.
+              </p>
+              
+              <button
+                className={`${styles.applyBtn} ${styles.collectionBtnGreen}`}
+                onClick={() => {
+                  setRestoreTarget('default');
+                  setTimeout(() => document.getElementById('restore-collection-btn')?.click(), 100);
+                }}
+                disabled={collectionLoading}
+              >
+                {collectionLoading ? 'Saving...' : 'Set "default" Collection as Active Profile'}
+              </button>
+              
+              {/* Hidden button to trigger the actual API call using the existing handleRestoreCollection function */}
+              <button 
+                id="restore-collection-btn" 
+                onClick={handleRestoreCollection} 
+                style={{ display: 'none' }}
+              />
             </div>
           </section>
         </div>
