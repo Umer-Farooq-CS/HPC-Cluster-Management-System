@@ -66,6 +66,9 @@ app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
 app.include_router(ansible.router, prefix="/api/v1/ansible", tags=["ansible"])
 app.include_router(env_stacks.router, prefix="/api/v1/env-stacks", tags=["env-stacks"])
 
+from api.routes import cluster_info
+app.include_router(cluster_info.router, prefix="/api/v1/cluster-info", tags=["cluster-info"])
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "HPC Management API is running"}

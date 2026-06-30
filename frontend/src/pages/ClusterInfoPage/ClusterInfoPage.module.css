@@ -11,8 +11,17 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Header ─────────────────────────────────────────────────────────────── */
 .header {
   margin-bottom: var(--space-2xl);
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
 }
 
 .title {
@@ -29,22 +38,71 @@
   font-size: 1rem;
 }
 
-/* --- GUI Layout --- */
+/* ─── Refresh Controls ───────────────────────────────────────────────────── */
+.refreshControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+.refreshBtn {
+  padding: 8px 18px;
+  background: var(--accent-primary-dim);
+  border: 1px solid var(--accent-primary);
+  color: var(--accent-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: #fff;
+  box-shadow: var(--shadow-button);
+}
+
+.refreshBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lastRefresh {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.loadingPill {
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+/* ─── GUI Layout ─────────────────────────────────────────────────────────── */
 .guiContainer {
   display: flex;
-  gap: var(--space-xl);
+  gap: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  height: calc(100vh - 250px);
+  height: calc(100vh - 260px);
   min-height: 600px;
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
-/* --- Sidebar --- */
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar {
-  width: 260px;
+  width: 240px;
   background: var(--bg-card);
   border-right: 1px solid var(--border-subtle);
   padding: var(--space-lg) 0;
@@ -57,11 +115,11 @@
 }
 
 .navGroupTitle {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   padding: 0 var(--space-lg);
   margin-bottom: var(--space-sm);
 }
@@ -71,13 +129,16 @@
   text-align: left;
   background: transparent;
   border: none;
-  padding: var(--space-sm) var(--space-lg);
+  padding: 8px var(--space-lg);
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
   border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .navItem:hover {
@@ -91,7 +152,30 @@
   border-left-color: var(--accent-primary);
 }
 
-/* --- Content Area --- */
+/* Colored dot in sidebar node list */
+.navDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.navDotIdle { background: var(--accent-secondary); }
+.navDotAlloc { background: var(--accent-warning); }
+.navDotDown { background: var(--accent-danger); }
+
+/* Small number badge inside nav item */
+.navBadge {
+  margin-left: auto;
+  background: var(--accent-warning);
+  color: hsl(222,22%,8%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+}
+
+/* ─── Content Area ───────────────────────────────────────────────────────── */
 .contentArea {
   flex: 1;
   padding: var(--space-xl);
@@ -100,12 +184,13 @@
   min-width: 0;
 }
 
+/* ─── Detail Panel ───────────────────────────────────────────────────────── */
 .detailPanel {
   animation: slideIn var(--transition-normal);
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(10px); }
+  from { opacity: 0; transform: translateX(8px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -114,38 +199,63 @@
   align-items: center;
   gap: var(--space-md);
   margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
 }
 
 .panelTitle {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.badge {
-  background: var(--border-subtle);
-  color: var(--text-secondary);
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  font-size: 0.8rem;
-  font-weight: 600;
+/* ─── Summary cards row ──────────────────────────────────────────────────── */
+.summaryRow {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+  flex-wrap: wrap;
 }
 
-.badgeSuccess {
-  background: var(--accent-secondary-dim);
-  color: var(--accent-secondary);
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  font-size: 0.8rem;
-  font-weight: 600;
+.summaryCard {
+  flex: 1;
+  min-width: 120px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
+.summaryCard.summaryIdle { border-color: var(--accent-secondary); }
+.summaryCard.summaryAlloc { border-color: var(--accent-warning); }
+.summaryCard.summaryDown { border-color: var(--accent-danger); }
+
+.summaryValue {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.summaryLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Sections ───────────────────────────────────────────────────────────── */
 .sectionGroup {
   margin-bottom: var(--space-2xl);
 }
 
 .sectionHeading {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: var(--space-md);
@@ -153,10 +263,11 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* ─── Data Cards Grid ────────────────────────────────────────────────────── */
 .gridContainer {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-lg);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-md);
 }
 
 .dataCard {
@@ -171,28 +282,56 @@
 }
 
 .dataLabel {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   font-weight: 500;
 }
 
 .dataValue {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--text-primary);
   font-weight: 600;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
-.dataValueHighlight {
-  font-size: 1.1rem;
-  color: var(--accent-secondary);
-  font-weight: 700;
-  word-break: break-word;
-  overflow-wrap: break-word;
+/* ─── Badges ─────────────────────────────────────────────────────────────── */
+.badge {
+  background: var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-/* --- Tables --- */
+/* State chips */
+.stateChip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--border-subtle);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.stateIdle { background: hsl(168,80%,42%,0.15); color: var(--accent-secondary); }
+.stateAlloc { background: hsl(38,92%,58%,0.15); color: var(--accent-warning); }
+.stateDown { background: hsl(0,75%,58%,0.15); color: var(--accent-danger); }
+.statePending { background: hsl(207,90%,54%,0.15); color: var(--accent-primary); }
+
+.reasonChip {
+  font-size: 0.8rem;
+  color: var(--accent-warning);
+  background: hsl(38,92%,58%,0.1);
+  border: 1px solid hsl(38,92%,58%,0.25);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+
+/* ─── Tables ─────────────────────────────────────────────────────────────── */
 .tableWrapper {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -211,15 +350,16 @@
   background: var(--bg-surface);
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
 .dataTable td {
   padding: var(--space-sm) var(--space-md);
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -227,7 +367,64 @@
   border-bottom: none;
 }
 
-/* Responsive Adjustments */
+.clickableRow {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.clickableRow:hover td {
+  background: var(--bg-card-hover);
+}
+
+/* ─── Loading / Error States ─────────────────────────────────────────────── */
+.loadingState,
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  height: 100%;
+  min-height: 300px;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorIcon {
+  font-size: 2.5rem;
+  color: var(--accent-warning);
+}
+
+.retryBtn {
+  padding: 8px 24px;
+  background: var(--accent-primary-dim);
+  border: 1px solid var(--accent-primary);
+  color: var(--accent-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.retryBtn:hover {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .guiContainer {
     flex-direction: column;
@@ -239,5 +436,8 @@
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
     height: auto;
+  }
+  .summaryRow {
+    flex-direction: column;
   }
 }
