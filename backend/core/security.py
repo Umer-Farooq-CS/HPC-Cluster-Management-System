@@ -31,7 +31,10 @@ def get_keycloak_admin() -> KeycloakAdmin:
             user_realm_name="master",
             verify=True
         )
-        _keycloak_admin.connection.realm_name = KEYCLOAK_REALM
+        # python-keycloak v7: use change_current_realm() to correctly target hpc realm.
+        # This is the only confirmed working method — realm_name and connection.realm_name
+        # both fail to redirect API calls in this library version.
+        _keycloak_admin.change_current_realm(KEYCLOAK_REALM)
     return _keycloak_admin
 
 class TokenUser(BaseModel):
