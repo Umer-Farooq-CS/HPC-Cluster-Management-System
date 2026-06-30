@@ -50,6 +50,14 @@ Because the Bastion host's Nginx proxies traffic to the Master Node's Apache ser
   1. Configured custom proxy headers (`X-Forwarded-Proto`, `X-Forwarded-Port`, `X-Forwarded-Host`) inside the Apache virtual host directives (`ood_portal.yml`).
   2. Modified the Rails application configurations to trust the proxy headers, allowing secure session cookies to validate correctly.
 
+### D. Keycloak HTTPS / OIDC Issuer Verification & State Handling
+
+When proxying Keycloak behind Nginx, Keycloak would initially generate token signatures and OpenID Connect configuration endpoints using internal HTTP addresses. This caused OIDC issuer mismatches and "400 Bad Request" errors in Apache's `mod_auth_openidc` (unable to restore state).
+- **The Fix:**
+  1. **Programmatic HTTPS Issuer Configuration:** The backend's startup sequence uses `python-keycloak` to modify the `hpc` realm attributes, explicitly setting the `frontendUrl` to the public HTTPS domain (e.g., `https://192.168.10.100`).
+  2. **Nginx Discovery URL Rewriting:** Nginx uses a `sub_filter` configuration block for `/realms/` to dynamically rewrite raw `http://192.168.10.2` domains in JSON metadata payloads to `https://192.168.10.2` (or the corresponding external DOMAIN).
+  3. **Apache mod_auth_openidc Tuning:** Customized state validation limits and cookies in the Apache config on the Master Node, ensuring the Open OnDemand OIDC provider successfully validates Keycloak HTTPS tokens even when self-signed certificates are in use.
+
 ---
 
 ## 4. OOD Administrator Cheatsheet

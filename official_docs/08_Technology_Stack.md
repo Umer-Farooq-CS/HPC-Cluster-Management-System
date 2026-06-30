@@ -15,17 +15,22 @@ This stack runs isolated on the Bastion Host, containerized via Docker Compose.
 - **TailwindCSS**: The styling framework. Chosen to rapidly implement the "Premium Glassmorphism" UI aesthetic without writing thousands of lines of custom CSS.
 
 ### Backend API
-- **FastAPI (Python 3)**: The backend framework. Chosen specifically over Flask or Django because of its native support for asynchronous programming (`async/await`), which is strictly required for handling 30-minute SSH installation tasks without blocking the web server.
+- **FastAPI (Python 3)**: The backend framework. Chosen specifically over Flask or Django because of its native support for asynchronous programming (`async/await`), which is strictly required for handling concurrent connections without blocking.
+- **Celery**: Asynchronous task queue used to run resource-heavy or long-running operations (such as compiling system images, running playbooks, and deploying nodes) out-of-process.
 - **Uvicorn / Gunicorn**: The ASGI server handling concurrent HTTP and WebSocket connections.
-- **asyncssh**: The Python library used to establish non-blocking, password-authenticated SSH tunnels into the Master Node to execute bootstrapping commands.
+- **asyncssh**: The Python library used to establish non-blocking SSH tunnels into the Master Node to execute bootstrapping and configuration commands.
 
 ### Databases & State
 - **PostgreSQL**: The primary relational database. Stores the state of the web application (saved subnets, node MAC addresses, OCI image URLs, and Keycloak user metadata).
-- **Redis**: The in-memory data store. Acts as a high-speed telemetry cache. Instead of directly querying the Master Node's `slurmctld` every second (which degrades cluster performance), the backend polls Slurm, saves the state to Redis, and the frontend reads instantly from Redis.
+- **Redis**: The in-memory data store. Acts as the Celery task broker, a log storage list for WebSocket log streaming, and a high-speed telemetry cache for Slurm state. A periodic Celery beat task polls Slurm, saves the state to Redis, and the frontend reads from it instantly to prevent connection storms.
+
+### Monitoring & Telemetry
+- **Prometheus**: Time-series database that pulls hardware metrics every 15 seconds from Node Exporters running on the Master Node and compute nodes, as well as Slurm status via Slurm Exporter.
+- **Grafana**: Graphical dashboard generator that queries Prometheus to render zoomable, historical resource metrics. Integrated with Keycloak SSO and proxied via Nginx.
 
 ### Identity & Security
-- **Keycloak**: Open Source Identity and Access Management (IAM). Provides robust SSO, MFA, and RBAC via JSON Web Tokens (JWT).
-- **Nginx**: The reverse proxy. Handles TLS termination (HTTPS) and routing traffic between the React frontend, FastAPI backend, and Keycloak authentication endpoints.
+- **Keycloak**: Open Source Identity and Access Management (IAM). Provides robust SSO, MFA, and RBAC via JSON Web Tokens (JWT) for both the administration dashboard and Grafana.
+- **Nginx**: The reverse proxy. Handles TLS termination (HTTPS) and routing traffic between the React frontend, FastAPI backend, Keycloak authentication, and Grafana endpoints.
 
 ---
 

@@ -390,6 +390,28 @@ export default function ClusterInfoPage() {
     </div>
   );
 
+  const renderTelemetry = () => (
+    <div className={styles.detailPanel} style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+      <div className={styles.panelHeader}>
+        <h2 className={styles.panelTitle}>Hardware Telemetry (Grafana)</h2>
+        <span className={styles.statusBadge} style={{ background: 'var(--accent-secondary)' }}>Grafana Live</span>
+      </div>
+      <div style={{ flex: 1, width: '100%', minHeight: '500px', position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
+        <iframe
+          src="/grafana/d/rYdddlPWk/node-exporter-full?orgId=1&kiosk"
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            background: 'transparent'
+          }}
+          title="Grafana Hardware Telemetry"
+          sandbox="allow-scripts allow-same-origin allow-forms"
+        />
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     if (loading && !data) {
       return (
@@ -411,6 +433,7 @@ export default function ClusterInfoPage() {
     if (activeTab === 'overview') return renderOverview();
     if (activeTab === 'jobs') return renderJobs();
     if (activeTab === 'storage') return renderStorage();
+    if (activeTab === 'telemetry') return renderTelemetry();
     if (activeTab.startsWith('node-') && selectedNode) return renderNode(selectedNode);
     return renderOverview();
   };
@@ -451,6 +474,9 @@ export default function ClusterInfoPage() {
             </button>
             <button className={`${styles.navItem} ${activeTab === 'storage' ? styles.navItemActive : ''}`} onClick={() => setActiveTab('storage')}>
               Storage (df)
+            </button>
+            <button className={`${styles.navItem} ${activeTab === 'telemetry' ? styles.navItemActive : ''}`} onClick={() => setActiveTab('telemetry')}>
+              Hardware Telemetry
             </button>
           </div>
 

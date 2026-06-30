@@ -118,13 +118,62 @@ Once this stack is running, administrators can solve complex issues that the Slu
 
 ---
 
-## 5. Deployment Checklist
+## 5. Active Telemetry Reference & Verification
 
-To roll this out in the future, follow these steps:
+The telemetry stack is fully automated and deployed as part of the core cluster startup.
 
-1. **Bastion Host:** Add `prometheus` and `grafana` services to `docker-compose.yml`.
-2. **Nginx:** Add the `location /grafana/` proxy block in `nginx.conf`.
-3. **Master Node:** Install `prometheus-node-exporter` via `dnf` and enable the systemd service.
-4. **Compute Nodes:** Add `node_exporter` binary and a systemd unit file to the Warewulf default overlay, then reboot the compute nodes.
-5. **Keycloak:** Create a new Client in Keycloak for Grafana OIDC authentication.
-6. **Grafana Config:** Import a community "Node Exporter Full" dashboard to instantly get CPU, RAM, and Disk visualizations without building them manually.
+### Active Configurations
+
+1. **Bastion Host Docker Services:**
+   Prometheus and Grafana services run within the Docker Compose stack.
+   - **Prometheus** configuration: Mounts `/prometheus/prometheus.yml` containing the scrape targets for the Master Node (`192.168.10.2:9100`), Slurm Exporter (`192.168.10.2:9092`), and compute nodes (`192.168.20.10:9100`, etc.).
+   - **Grafana** configuration: Mounts volume plugins and environment-based OIDC parameters linking authentication directly to the Keycloak container.
+
+2. **Nginx Reverse Proxy Integration:**
+   `nginx/nginx.conf` exposes Grafana at `/grafana/`:
+   ```nginx
+   location /grafana/ {
+       proxy_pass http://hpc-grafana:3000/;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+   }
+   ```
+
+3. **Master Node Exporters:**
+   - **Node Exporter:** Active on port `9100` (`systemctl status prometheus-node-exporter`).
+   - **Slurm Exporter:** Active on port `9092` (`systemctl status prometheus-slurm-exporter`), reading directly from the `slurmctld` process memory and config files.
+
+4. **Compute Nodes Overlay Automation:**
+   The Warewulf `nodeconfig` overlay contains:
+   - The `/usr/bin/node_exporter` binary.
+   - A systemd service template `/etc/systemd/system/node_exporter.service` which triggers Node Exporter automatically on boot.
+
+5. **Keycloak OIDC Integration:**
+   Grafana's `grafana.ini` has OIDC activated:
+   ```ini
+   [auth.generic_oauth]
+   enabled = true
+   name = Keycloak
+   client_id = hpc-grafana
+   client_secret = <grafana-client-secret>
+   scopes = openid email profile
+   auth_url = https://192.168.10.100/realms/hpc/protocol/openid-connect/auth
+   token_url = http://hpc-keycloak:8080/realms/hpc/protocol/openid-connect/token
+   api_url = http://hpc-keycloak:8080/realms/hpc/protocol/openid-connect/userinfo
+   role_attribute_path = contains(roles[*], 'admin') && 'Admin' || 'Viewer'
+   ```
+   *(Note: Internal URLs point directly to the Docker service name `hpc-keycloak` to prevent internal container networking errors.)*
+
+### Verification Steps
+
+To verify telemetry is gathering metrics:
+1. Log in to the management dashboard.
+2. Click **Telemetry** in the sidebar navigation (redirects to `/grafana/`).
+3. Log in with your Keycloak credentials if prompted.
+4. Open the **Node Exporter Full** dashboard to view real-time and historical CPU, Network, and Disk graphs for the entire cluster.
+5. Query the Prometheus status page directly via container log inspection to verify all scrape targets are green:
+   ```bash
+   docker-compose logs -f prometheus
+   ```

@@ -102,7 +102,7 @@ services:
     build: ./backend
     container_name: hpc-celery-worker
     env_file: .env
-    command: celery -A core.celery_app worker --loglevel=info
+    command: celery -A core.celery_app worker --beat --loglevel=info
     depends_on:
       - postgres
       - redis
@@ -132,6 +132,9 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SERVER_ROOT_URL=https://192.168.10.100/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_AUTH_GENERIC_OAUTH_ENABLED=true
@@ -144,6 +147,8 @@ services:
       - GF_AUTH_GENERIC_OAUTH_API_URL=http://hpc-keycloak:8080/realms/master/protocol/openid-connect/userinfo
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - keycloak
     networks:

@@ -231,61 +231,37 @@ def _parse_scontrol_nodes(raw: str) -> list:
 @router.get("/overview")
 async def get_cluster_overview(user: dict = Depends(get_current_user)):
     """
-    Returns a full cluster overview:
-    - Slurm node states (scontrol show nodes)
-    - Job queue (squeue)
-    - Slurm partition summary (sinfo --summarize)
-    - Master node uptime
-    - Master node memory (free -h)
-    - Master node disk (df -h)
+    Returns a full cluster overview pulled from Redis cache.
+    Hardware metrics are removed as they are now handled by Prometheus.
     """
-    executor = SSHExecutor(
-        host=settings.MASTER_IP,
-        username=settings.MASTER_USER,
-        password=settings.MASTER_PASS,
-    )
+    import json
+    from core.tasks import redis_client
 
-    # Run all commands concurrently
-    results = await asyncio.gather(
-        _run_cmd(executor, "scontrol show nodes 2>&1"),
-        _run_cmd(executor, "squeue --noheader -o '%i %j %u %t %M %D %C %R' 2>&1"),
-        _run_cmd(executor, "sinfo --summarize --noheader 2>&1"),
-        _run_cmd(executor, "uptime 2>&1"),
-        _run_cmd(executor, "free -h 2>&1"),
-        _run_cmd(executor, "df -h --output=source,size,used,avail,pcent,target 2>&1"),
-        _run_cmd(executor, "hostname && uname -r && cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"' 2>&1"),
-        _run_cmd(executor, "sinfo --noheader -o '%n %t %c %m %e %O %G %D' 2>&1"),
-        return_exceptions=True,
-    )
+    cached_data = redis_client.get("slurm_overview_cache")
+    if cached_data:
+        data = json.loads(cached_data)
+        raw_nodes = data.get("raw_nodes", "")
+        raw_squeue = data.get("raw_squeue", "")
+        raw_summary = data.get("raw_summary", "")
+        raw_sinfo = data.get("raw_sinfo", "")
+    else:
+        raw_nodes = raw_squeue = raw_summary = raw_sinfo = ""
 
-    raw_nodes, raw_squeue, raw_summary, raw_uptime, raw_free, raw_df, raw_host, raw_sinfo = results
-
-    # Parse each result (gracefully handle errors)
     def safe(fn, raw, fallback):
         try:
-            if isinstance(raw, Exception):
-                return fallback
-            return fn(raw)
+            return fn(raw) if raw else fallback
         except Exception:
             return fallback
 
     nodes = safe(_parse_scontrol_nodes, raw_nodes, [])
     jobs = safe(_parse_squeue, raw_squeue, [])
     summary = safe(_parse_slurm_info, raw_summary, {})
-    uptime_info = safe(_parse_uptime, raw_uptime, {"raw": str(raw_uptime)})
-    memory = safe(_parse_free, raw_free, {})
-    disks = safe(_parse_df, raw_df, [])
 
-    # Parse master node hostname/kernel/os
+    # Dummy hardware info since Prometheus handles it now
     master_info = {"hostname": "master", "kernel": "N/A", "os": "N/A"}
-    if not isinstance(raw_host, Exception):
-        host_lines = [l.strip() for l in raw_host.strip().splitlines() if l.strip()]
-        if len(host_lines) >= 1:
-            master_info["hostname"] = host_lines[0]
-        if len(host_lines) >= 2:
-            master_info["kernel"] = host_lines[1]
-        if len(host_lines) >= 3:
-            master_info["os"] = host_lines[2]
+    uptime_info = {"raw": "N/A", "uptime": "N/A", "users": "N/A", "load_avg": "N/A"}
+    memory = {}
+    disks = []
 
     return {
         "status": "success",
@@ -301,14 +277,18 @@ async def get_cluster_overview(user: dict = Depends(get_current_user)):
         "disks": disks,
     }
 
-
 @router.get("/jobs")
 async def get_jobs(user: dict = Depends(get_current_user)):
-    """Return live Slurm job queue."""
-    executor = SSHExecutor(
-        host=settings.MASTER_IP,
-        username=settings.MASTER_USER,
-        password=settings.MASTER_PASS,
-    )
-    raw = await _run_cmd(executor, "squeue --noheader -o '%i %j %u %t %M %D %C %R' 2>&1")
-    return {"status": "success", "jobs": _parse_squeue(raw)}
+    """Return live Slurm job queue from Redis cache."""
+    import json
+    from core.tasks import redis_client
+    
+    cached_data = redis_client.get("slurm_overview_cache")
+    if cached_data:
+        data = json.loads(cached_data)
+        raw_squeue = data.get("raw_squeue", "")
+        jobs = _parse_squeue(raw_squeue)
+    else:
+        jobs = []
+    
+    return {"status": "success", "jobs": jobs}

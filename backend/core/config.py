@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     MASTER_IP: str = "192.168.10.2"
     MASTER_USER: str = "root"
     MASTER_PASS: str = "hpc"
-    SSH_STRICT_HOST_KEY_CHECKING: bool = True
+    SSH_STRICT_HOST_KEY_CHECKING: bool = False
     
     # Cluster Network Configuration
     DATA_IP: str = "192.168.30.1"

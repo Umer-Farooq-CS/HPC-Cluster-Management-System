@@ -49,11 +49,11 @@ Bring up the entire stack in the background.
 docker-compose up -d --build
 ```
 
-You can verify that all 6 containers are running:
+You can verify that all 9 containers are running:
 ```bash
 docker ps
 ```
-You should see: `nginx`, `frontend`, `backend`, `keycloak`, `postgres`, and `redis`.
+You should see: `nginx`, `frontend`, `backend`, `keycloak`, `postgres`, `redis`, `celery_worker`, `prometheus`, and `grafana`.
 
 ### Step 3: Access the Dashboard
 

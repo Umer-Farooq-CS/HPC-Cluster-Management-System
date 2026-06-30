@@ -17,5 +17,10 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # Optional: configure task routing or beats here
+    beat_schedule={
+        "poll_slurm_metadata_every_10s": {
+            "task": "core.tasks.poll_slurm_metadata",
+            "schedule": 10.0,
+        },
+    }
 )
