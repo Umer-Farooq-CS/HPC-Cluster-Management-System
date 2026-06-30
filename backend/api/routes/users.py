@@ -29,22 +29,22 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-async def execute_ssh_commands(commands: list):
+async def execute_ssh_single_command(cmd: str):
     executor = SSHExecutor(
         host=settings.MASTER_IP,
         username=settings.MASTER_USER,
         password=settings.MASTER_PASS
     )
-    results = []
-    for cmd in commands:
-        output = []
-        async for line in executor.run_command_stream(cmd):
-            output.append(line)
-        results.append("\\n".join(output))
-    return results
+    output = []
+    async for line in executor.run_command_stream(cmd):
+        output.append(line)
+    return "\n".join(output)
 
 @router.post("/", response_model=UserResponse)
 async def create_user(user_in: UserCreate, current_user: TokenUser = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    import time
+    from core.tasks import redis_client, rebuild_warewulf_overlays_task
+
     # 1. Ensure user does not already exist in DB
     result = await db.execute(select(User).where(User.username == user_in.username))
     if result.scalars().first():
@@ -80,24 +80,35 @@ async def create_user(user_in: UserCreate, current_user: TokenUser = Depends(get
     
     commands = [
         f"useradd -m -s /bin/bash {safe_username} || echo 'User might exist'",
-        f"echo '# Spack Lmod Environment' >> /home/{user_in.username}/.bashrc",
-        f"echo 'if [ -d /export/apps/spack ]; then' >> /home/{user_in.username}/.bashrc",
-        f"echo '    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core' >> /home/{user_in.username}/.bashrc",
-        f"echo 'fi' >> /home/{user_in.username}/.bashrc",
-        f"chown {safe_username}:{safe_username} /home/{user_in.username}/.bashrc",
+        f"echo '# Spack Lmod Environment' >> /home/{safe_username}/.bashrc",
+        f"echo 'if [ -d /export/apps/spack ]; then' >> /home/{safe_username}/.bashrc",
+        f"echo '    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core' >> /home/{safe_username}/.bashrc",
+        f"echo 'fi' >> /home/{safe_username}/.bashrc",
+        f"chown {safe_username}:{safe_username} /home/{safe_username}/.bashrc",
         f"echo {safe_password} | passwd --stdin {safe_username}",
         f"sacctmgr -i add account default || echo 'Account exists'",
-        f"sacctmgr -i add user {safe_username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'",
-        "wwctl overlay build -A || echo 'Failed to build overlays'"
+        f"sacctmgr -i add user {safe_username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'"
     ]
     
     if user_in.role == "super_admin":
         commands.append(f"usermod -aG wheel {safe_username}")
         
+    # Combine commands with && to execute them in a single SSH shell session
+    combined_cmd = " && ".join([f"( {cmd} )" for cmd in commands])
+        
     try:
-        await execute_ssh_commands(commands)
+        await execute_ssh_single_command(combined_cmd)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to provision user on OS: {str(e)}")
+
+    # Trigger debounced Warewulf overlay rebuild
+    try:
+        now = time.time()
+        redis_client.set("last_overlay_rebuild_request", now)
+        rebuild_warewulf_overlays_task.apply_async(args=[now], countdown=10)
+    except Exception as e:
+        # Don't fail user creation if Celery/Redis connection drops
+        print(f"Warning: Failed to enqueue debounced overlay build: {e}")
 
     # 3. Add user to local DB (Password no longer used for web auth, set dummy to preserve schema)
     db_user = User(

@@ -401,8 +401,13 @@ def run_playbook_task(self, playbook_config: dict):
     return {"status": "completed"}
 
 @shared_task(bind=True)
-def rebuild_warewulf_overlays_task(self):
+def rebuild_warewulf_overlays_task(self, request_timestamp: float):
     """Debounced task to rebuild Warewulf overlays."""
+    # Check if a newer request has been made
+    last_request = redis_client.get("last_overlay_rebuild_request")
+    if last_request and float(last_request) > request_timestamp:
+        return {"status": "skipped", "message": "Debounced by a newer request"}
+        
     executor = SSHExecutor(
         host=settings.MASTER_IP,
         username=settings.MASTER_USER,
