@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     PROV_NETWORK: str = "192.168.20.0"
     PROV_IP: str = "192.168.20.1"
     
+    # Keycloak Admin Credentials
+    KEYCLOAK_ADMIN_USER: str = "admin"
+    KEYCLOAK_ADMIN_PASSWORD: str = "admin"
+    
     @property
     def FRONTEND_URLS(self) -> List[str]:
         # This dynamically supports the exact Domain loaded from the .env file!

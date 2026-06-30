@@ -5,7 +5,8 @@ from sqlalchemy.future import select
 
 from core.database import get_db
 from models.user import User
-from core.security import get_admin_user, TokenUser
+from core.security import get_admin_user, TokenUser, get_keycloak_admin
+from keycloak.exceptions import KeycloakError
 from core.config import settings
 from core.ssh_executor import SSHExecutor
 import asyncio
@@ -47,7 +48,28 @@ async def create_user(user_in: UserCreate, current_user: TokenUser = Depends(get
     # 1. Ensure user does not already exist in DB
     result = await db.execute(select(User).where(User.username == user_in.username))
     if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=400, detail="Username already registered locally")
+
+    # 1.5 Create user in Keycloak
+    kc_admin = get_keycloak_admin()
+    try:
+        new_kc_user_id = kc_admin.create_user({
+            "email": f"{user_in.username}@hpc.local",
+            "username": user_in.username,
+            "enabled": True,
+            "firstName": user_in.username,
+            "lastName": "HPC User"
+        })
+        kc_admin.set_user_password(user_id=new_kc_user_id, password=user_in.password, temporary=False)
+        
+        # Assign role
+        role_repr = kc_admin.get_realm_role(role_name=user_in.role)
+        kc_admin.assign_realm_roles(user_id=new_kc_user_id, roles=[role_repr])
+    except KeycloakError as e:
+        error_msg = getattr(e, 'error_message', str(e))
+        if hasattr(e, 'response_body'):
+            error_msg = e.response_body.decode('utf-8') if isinstance(e.response_body, bytes) else str(e.response_body)
+        raise HTTPException(status_code=400, detail=f"Keycloak user creation failed: {error_msg}")
         
     # 2. Add user to Linux OS and Slurm
     # Determine slurm admin level

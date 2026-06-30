@@ -3,7 +3,8 @@ import os
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
-from keycloak import KeycloakOpenID
+from keycloak import KeycloakOpenID, KeycloakAdmin
+from core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -16,6 +17,22 @@ keycloak_openid = KeycloakOpenID(
     client_id=KEYCLOAK_CLIENT_ID,
     realm_name=KEYCLOAK_REALM,
 )
+
+_keycloak_admin = None
+
+def get_keycloak_admin() -> KeycloakAdmin:
+    global _keycloak_admin
+    if _keycloak_admin is None:
+        _keycloak_admin = KeycloakAdmin(
+            server_url=KEYCLOAK_URL,
+            username=settings.KEYCLOAK_ADMIN_USER,
+            password=settings.KEYCLOAK_ADMIN_PASSWORD,
+            realm_name="master",
+            user_realm_name="master",
+            verify=True
+        )
+        _keycloak_admin.realm_name = KEYCLOAK_REALM
+    return _keycloak_admin
 
 class TokenUser(BaseModel):
     username: str
