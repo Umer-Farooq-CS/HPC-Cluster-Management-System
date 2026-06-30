@@ -35,6 +35,21 @@ def get_keycloak_admin() -> KeycloakAdmin:
         # This is the only confirmed working method — realm_name and connection.realm_name
         # both fail to redirect API calls in this library version.
         _keycloak_admin.change_current_realm(KEYCLOAK_REALM)
+        
+        # Ensure the realm's frontendUrl is set to https:// so Keycloak generates
+        # correct https:// issuer URLs in JWT tokens and OIDC discovery documents.
+        # This is stored in the DB, so it persists across Keycloak container restarts.
+        try:
+            realm = _keycloak_admin.get_realm(KEYCLOAK_REALM)
+            attrs = realm.get("attributes", {})
+            expected_url = f"https://{settings.DOMAIN}"
+            if attrs.get("frontendUrl") != expected_url:
+                attrs["frontendUrl"] = expected_url
+                _keycloak_admin.update_realm(KEYCLOAK_REALM, {"attributes": attrs})
+                print(f"[SECURITY] Set Keycloak realm frontendUrl to {expected_url}")
+        except Exception as e:
+            print(f"[SECURITY] Warning: Could not set realm frontendUrl: {e}")
+            
     return _keycloak_admin
 
 class TokenUser(BaseModel):
