@@ -6,7 +6,9 @@ from typing import Optional
 from core.ssh_executor import SSHExecutor
 from core.config import settings
 from core.security import get_current_user, SECRET_KEY, ALGORITHM
+from core.locks import deployment_lock
 import jwt
+import shlex
 
 router = APIRouter()
 
@@ -92,13 +94,15 @@ async def delete_image(image_name: str, user: dict = Depends(get_current_user)):
     """
     Deletes a Warewulf image from the Master Node.
     """
+    safe_image_name = shlex.quote(image_name)
     executor = _make_executor()
     output = []
     try:
-        async for line in executor.run_command_stream(
-            f"wwctl image delete {image_name} --yes 2>&1"
-        ):
-            output.append(line)
+        async with deployment_lock:
+            async for line in executor.run_command_stream(
+                f"wwctl image delete {safe_image_name} --yes 2>&1"
+            ):
+                output.append(line)
         return {"status": "success", "output": output}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -130,6 +134,18 @@ async def build_image_ws(websocket: WebSocket, token: str = Query(None)):
         # Receive the build config as JSON from the first message
         data = await websocket.receive_json()
         cfg = ImageBuildPayload(**data)
+        
+        # Sanitize fields for RCE prevention
+        cfg.name = shlex.quote(cfg.name)
+        cfg.source = shlex.quote(cfg.source)
+        cfg.ntpServer = shlex.quote(cfg.ntpServer)
+        cfg.syslogTarget = shlex.quote(cfg.syslogTarget)
+        cfg.packages = " ".join([shlex.quote(p.strip()) for p in cfg.packages.replace(',', ' ').split() if p.strip()])
+        cfg.enabledServices = " ".join([shlex.quote(p.strip()) for p in cfg.enabledServices.replace(',', ' ').split() if p.strip()])
+
+        await deployment_lock.acquire()
+        lock_acquired = True
+
         executor = _make_executor()
 
         async def run_and_check(cmd: str, step_name: str):
@@ -181,7 +197,7 @@ rm -f $CHROOT/tmp/setup_repo.sh"""
 cat > $CHROOT/tmp/setup_inject.sh << 'EOF'
 #!/bin/bash
 set -e
-dnf -y install {cfg.packages.replace(',', ' ')}
+dnf -y install {cfg.packages}
 systemctl enable {services}
 EOF
 chmod +x $CHROOT/tmp/setup_inject.sh && \\
@@ -319,6 +335,8 @@ rm -f $CHROOT/tmp/setup_dracut.sh"""
         except:
             pass
     finally:
+        if 'lock_acquired' in locals() and lock_acquired:
+            deployment_lock.release()
         try:
             await websocket.close()
         except:

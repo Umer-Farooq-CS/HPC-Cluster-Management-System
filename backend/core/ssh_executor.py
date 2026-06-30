@@ -1,6 +1,7 @@
 import asyncssh
 import asyncio
 from typing import AsyncGenerator
+from core.config import settings
 
 # How long (seconds) to wait for the SSH handshake to complete
 SSH_CONNECT_TIMEOUT = 10
@@ -24,9 +25,10 @@ class SSHExecutor:
         connect_kwargs = {
             "host": self.host,
             "username": self.username,
-            "known_hosts": None,
             "connect_timeout": SSH_CONNECT_TIMEOUT,
         }
+        if not settings.SSH_STRICT_HOST_KEY_CHECKING:
+            connect_kwargs["known_hosts"] = None
 
         if self.password:
             connect_kwargs["password"] = self.password
@@ -36,17 +38,26 @@ class SSHExecutor:
         try:
             async with asyncssh.connect(**connect_kwargs) as conn:
                 async with conn.create_process(command) as process:
-                    async for line in process.stdout:
-                        stripped = line.strip()
-                        if stripped:
-                            yield stripped
-                        # Yield an idle heartbeat warning after SSH_IDLE_TIMEOUT seconds of silence
-                        # We use asyncio.wait_for wrapping the readline
+                    while True:
+                        try:
+                            line = await asyncio.wait_for(process.stdout.readline(), timeout=SSH_IDLE_TIMEOUT)
+                            if not line:
+                                break
+                            
+                            # process.stdout.readline() returns a string (or bytes depending on config). 
+                            # Since it's a string stream by default in asyncssh:
+                            stripped = line.strip()
+                            if stripped:
+                                yield stripped
+                        except asyncio.TimeoutError:
+                            yield f"[WARNING] Command output timed out after {SSH_IDLE_TIMEOUT}s."
+                            process.terminate()
+                            break
+                    
                     try:
-                        await asyncio.wait_for(process.wait(), timeout=SSH_IDLE_TIMEOUT * 60)
-                    except asyncio.TimeoutError:
-                        yield f"[WARNING] Command timed out after {SSH_IDLE_TIMEOUT} minutes with no completion."
-                        process.close()
+                        await process.wait()
+                    except Exception as e:
+                        yield f"[WARNING] Error waiting for process to close: {str(e)}"
 
                     if process.returncode and process.returncode != 0:
                         yield f"[ERROR] Command exited with code {process.returncode}"

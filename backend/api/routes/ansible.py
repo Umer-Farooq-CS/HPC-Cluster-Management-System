@@ -4,6 +4,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from typing import List
 from core.ssh_executor import SSHExecutor
 from core.config import settings
+from core.locks import deployment_lock
+import shlex
 from core.security import get_current_user, SECRET_KEY, ALGORITHM
 import jwt
 
@@ -62,14 +64,16 @@ async def run_playbook(websocket: WebSocket, playbook_name: str, token: str = Qu
     
     # Command runs ansible-playbook on the remote node inside the scripts/ansible directory
     # so that inventory files are resolved correctly.
-    command = f"cd {REMOTE_ANSIBLE_DIR} && ansible-playbook -i inventory.ini {playbook_name}"
+    safe_playbook_name = shlex.quote(playbook_name)
+    command = f"cd {REMOTE_ANSIBLE_DIR} && ansible-playbook -i inventory.ini {safe_playbook_name}"
     
     try:
         await websocket.send_text(f"\033[1;34m[*] Executing Playbook: {playbook_name} on {settings.MASTER_IP}...\033[0m\n")
         
-        async for line in executor.run_command_stream(command):
-            # Send each line of stdout/stderr to the frontend
-            await websocket.send_text(line + "\n")
+        async with deployment_lock:
+            async for line in executor.run_command_stream(command):
+                # Send each line of stdout/stderr to the frontend
+                await websocket.send_text(line + "\n")
             
         await websocket.send_text(f"\n\033[1;32m[+] Execution completed for {playbook_name}\033[0m\n")
     except WebSocketDisconnect:

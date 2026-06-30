@@ -9,6 +9,7 @@ from core.security import get_admin_user, get_password_hash
 from core.config import settings
 from core.ssh_executor import SSHExecutor
 import asyncio
+import shlex
 
 router = APIRouter()
 
@@ -52,22 +53,25 @@ async def create_user(user_in: UserCreate, current_user: User = Depends(get_admi
     # Determine slurm admin level
     slurm_admin_level = "Admin" if user_in.role in ["super_admin", "admin"] else "None"
     
+    safe_username = shlex.quote(user_in.username)
+    safe_password = shlex.quote(user_in.password)
+    
     commands = [
-        f"useradd -m -s /bin/bash {user_in.username} || echo 'User might exist'",
+        f"useradd -m -s /bin/bash {safe_username} || echo 'User might exist'",
         f"echo '# Spack Lmod Environment' >> /home/{user_in.username}/.bashrc",
         f"echo 'if [ -d /export/apps/spack ]; then' >> /home/{user_in.username}/.bashrc",
         f"echo '    module use /export/apps/spack/share/spack/lmod/linux-almalinux9-x86_64/Core' >> /home/{user_in.username}/.bashrc",
         f"echo 'fi' >> /home/{user_in.username}/.bashrc",
-        f"chown {user_in.username}:{user_in.username} /home/{user_in.username}/.bashrc",
-        f"echo '{user_in.password}' | passwd --stdin {user_in.username}",
-        f"htpasswd -B -b /etc/ood/config/htpasswd {user_in.username} '{user_in.password}'",
+        f"chown {safe_username}:{safe_username} /home/{user_in.username}/.bashrc",
+        f"echo {safe_password} | passwd --stdin {safe_username}",
+        f"htpasswd -B -b /etc/ood/config/htpasswd {safe_username} {safe_password}",
         f"sacctmgr -i add account default || echo 'Account exists'",
-        f"sacctmgr -i add user {user_in.username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'",
+        f"sacctmgr -i add user {safe_username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'",
         "wwctl overlay build -A || echo 'Failed to build overlays'"
     ]
     
     if user_in.role == "super_admin":
-        commands.append(f"usermod -aG wheel {user_in.username}")
+        commands.append(f"usermod -aG wheel {safe_username}")
         
     try:
         await execute_ssh_commands(commands)

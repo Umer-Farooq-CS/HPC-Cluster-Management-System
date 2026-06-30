@@ -8,6 +8,8 @@ from typing import List, Dict, Any, Optional
 
 from core.ssh_executor import SSHExecutor
 from core.config import settings
+from core.locks import deployment_lock
+import shlex
 
 router = APIRouter()
 
@@ -172,6 +174,9 @@ async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_
             await websocket.close()
             return
 
+        await deployment_lock.acquire()
+        lock_acquired = True
+
         # ---------------------------------------------------------
         # DB Persistence: Clear old state and insert new
         # ---------------------------------------------------------
@@ -230,16 +235,16 @@ async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_
         # Step 2: Register nodes in Warewulf
         await websocket.send_text("[STEP 2] Registering nodes in Warewulf...")
         for node in nodes_data:
-            hostname = node["hostname"]
-            mac = node["mac"]
-            ip = node["ip"]
-            image = node.get("assignedImage", "almalinux-9")
-            await websocket.send_text(f"  -> Registering {hostname} ({mac}) with image {image}")
+            safe_hostname = shlex.quote(node["hostname"])
+            safe_mac = shlex.quote(node["mac"])
+            safe_ip = shlex.quote(node["ip"])
+            safe_image = shlex.quote(node.get("assignedImage", "almalinux-9"))
+            await websocket.send_text(f"  -> Registering {node['hostname']} ({node['mac']}) with image {node.get('assignedImage', 'almalinux-9')}")
             if overwrite_flag:
-                cmd_add = f"wwctl node delete {hostname} --yes 2>/dev/null; wwctl node add {hostname} --image {image} --profile nodes --netname default --ipaddr={ip} --hwaddr={mac} 2>&1"
+                cmd_add = f"wwctl node delete {safe_hostname} --yes 2>/dev/null; wwctl node add {safe_hostname} --image {safe_image} --profile nodes --netname default --ipaddr={safe_ip} --hwaddr={safe_mac} 2>&1"
             else:
-                cmd_add = f"wwctl node add {hostname} --image {image} --profile nodes --netname default --ipaddr={ip} --hwaddr={mac} 2>&1"
-            await run_and_check(cmd_add, f"Node registration ({hostname})")
+                cmd_add = f"wwctl node add {safe_hostname} --image {safe_image} --profile nodes --netname default --ipaddr={safe_ip} --hwaddr={safe_mac} 2>&1"
+            await run_and_check(cmd_add, f"Node registration ({node['hostname']})")
 
         # Step 3: Rebuild Overlays
         await websocket.send_text("[STEP 3] Rebuilding Warewulf DHCP and Node Overlays...")
@@ -261,13 +266,14 @@ async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_
         # Build NodeName= lines
         node_name_lines = []
         for (sockets, cores, threads), hostnames in topo_groups.items():
-            csv = ",".join(hostnames)
+            safe_hostnames = [shlex.quote(h) for h in hostnames]
+            csv = ",".join(safe_hostnames)
             node_name_lines.append(
                 f"NodeName={csv} Sockets={sockets} CoresPerSocket={cores} ThreadsPerCore={threads} State=UNKNOWN"
             )
 
         # Delete all existing NodeName/PartitionName lines, then append fresh ones
-        partition_nodes = nodes_csv
+        partition_nodes = ",".join([shlex.quote(n["hostname"]) for n in nodes_data])
         slurm_cmd_parts = [
             "sed -i '/^NodeName=/d' /etc/slurm/slurm.conf",
             "sed -i '/^PartitionName=/d' /etc/slurm/slurm.conf",
@@ -335,6 +341,8 @@ async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_
         except:
             pass
     finally:
+        if 'lock_acquired' in locals() and lock_acquired:
+            deployment_lock.release()
         try:
             await websocket.close()
         except:
