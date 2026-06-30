@@ -39,15 +39,13 @@ services:
       # Initial Admin User
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      # Host settings
-      KC_HOSTNAME_STRICT: "true"
-      KC_HOSTNAME_STRICT_HTTPS: "true"
+      # Host settings - Keycloak 24 config for Nginx reverse proxy
+      KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
-      # Nginx Proxy Settings
-      KC_PROXY: "edge"
-      KC_HOSTNAME_URL: "https://${DOMAIN}"
-      KC_HOSTNAME_ADMIN_URL: "https://${DOMAIN}"
+      # Trust Nginx X-Forwarded-* headers (Keycloak 24 syntax)
+      KC_PROXY_HEADERS: "xforwarded"
+      KC_HOSTNAME: "192.168.10.2"
     volumes:
       - ./backend/keycloak-themes/hpc-theme:/opt/keycloak/themes/hpc-theme:ro
     command: start-dev
