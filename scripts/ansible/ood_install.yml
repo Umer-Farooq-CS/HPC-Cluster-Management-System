@@ -175,7 +175,7 @@
           # OIDC (Keycloak) Authentication via mod_auth_openidc
           # --------------------------------------------------------
           oidc_uri: /oidc
-          oidc_provider_metadata_url: "http://{{ ood_domain }}:8080/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
+          oidc_provider_metadata_url: "https://{{ ood_domain }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
           oidc_client_id: "{{ keycloak_client_id }}"
           oidc_client_secret: "{{ oidc_client_secret }}"
           oidc_remote_user_claim: "preferred_username"
@@ -188,6 +188,7 @@
           auth:
             - "AuthType openid-connect"
             - "Require valid-user"
+            - "OIDCSSLValidateServer Off"
 
           # Enable hook script to auto-create home directories on first login
           pun_pre_hook_root_cmd: "/etc/ood/config/create_user_home.sh"

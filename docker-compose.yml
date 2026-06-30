@@ -46,9 +46,7 @@ services:
       KC_HEALTH_ENABLED: "true"
       # Nginx Proxy Settings
       KC_PROXY_HEADERS: "xforwarded"
-      # Pin the external URL so the OIDC discovery document advertises the correct address
-      KC_HOSTNAME_URL: "http://${DOMAIN}:8080"
-      KC_HOSTNAME_ADMIN_URL: "http://${DOMAIN}:8080"
+      KC_HOSTNAME: ${DOMAIN}
     volumes:
       - ./backend/keycloak-themes/hpc-theme:/opt/keycloak/themes/hpc-theme:ro
     command: start-dev
