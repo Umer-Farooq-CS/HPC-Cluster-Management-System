@@ -1,62 +1,62 @@
 import jwt
-import bcrypt
 import os
-from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from core.database import get_db
-from models.user import User
+from pydantic import BaseModel
+from keycloak import KeycloakOpenID
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("JWT_SECRET_KEY environment variable is not set!")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 1 day
+KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://hpc-keycloak:8080")
+KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "hpc")
+KEYCLOAK_CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", "hpc-frontend")
 
-def verify_password(plain_password: str, hashed_password: str):
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+keycloak_openid = KeycloakOpenID(
+    server_url=KEYCLOAK_URL,
+    client_id=KEYCLOAK_CLIENT_ID,
+    realm_name=KEYCLOAK_REALM,
+)
 
-def get_password_hash(password: str):
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+class TokenUser(BaseModel):
+    username: str
+    role: str
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
+        public_key = "-----BEGIN PUBLIC KEY-----\n" + keycloak_openid.public_key() + "\n-----END PUBLIC KEY-----"
+        options = {"verify_signature": True, "verify_aud": False, "verify_exp": True}
+        payload = jwt.decode(token, public_key, algorithms=["RS256"], options=options)
         
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalars().first()
-    if user is None:
+        username: str = payload.get("preferred_username")
+        if not username:
+            raise credentials_exception
+            
+        realm_access = payload.get("realm_access", {})
+        roles = realm_access.get("roles", [])
+        
+        role = "normal_user"
+        if "super_admin" in roles:
+            role = "super_admin"
+        elif "admin" in roles:
+            role = "admin"
+            
+        return TokenUser(username=username, role=role)
+        
+    except Exception as e:
+        print(f"[SECURITY] JWT Validation error: {e}")
         raise credentials_exception
-    return user
 
-async def get_admin_user(current_user: User = Depends(get_current_user)):
+async def get_admin_user(current_user: TokenUser = Depends(get_current_user)):
     if current_user.role not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 
-async def get_super_admin_user(current_user: User = Depends(get_current_user)):
+async def get_super_admin_user(current_user: TokenUser = Depends(get_current_user)):
     if current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="Super Admin privileges required")
     return current_user

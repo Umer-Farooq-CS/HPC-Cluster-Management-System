@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 
 from core.database import get_db
 from models.user import User
-from core.security import get_admin_user, get_password_hash
+from core.security import get_admin_user, TokenUser
 from core.config import settings
 from core.ssh_executor import SSHExecutor
 import asyncio
@@ -43,7 +43,7 @@ async def execute_ssh_commands(commands: list):
     return results
 
 @router.post("/", response_model=UserResponse)
-async def create_user(user_in: UserCreate, current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+async def create_user(user_in: UserCreate, current_user: TokenUser = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     # 1. Ensure user does not already exist in DB
     result = await db.execute(select(User).where(User.username == user_in.username))
     if result.scalars().first():
@@ -64,7 +64,6 @@ async def create_user(user_in: UserCreate, current_user: User = Depends(get_admi
         f"echo 'fi' >> /home/{user_in.username}/.bashrc",
         f"chown {safe_username}:{safe_username} /home/{user_in.username}/.bashrc",
         f"echo {safe_password} | passwd --stdin {safe_username}",
-        f"htpasswd -B -b /etc/ood/config/htpasswd {safe_username} {safe_password}",
         f"sacctmgr -i add account default || echo 'Account exists'",
         f"sacctmgr -i add user {safe_username} account=default adminlevel={slurm_admin_level} || echo 'Slurm User exists'",
         "wwctl overlay build -A || echo 'Failed to build overlays'"
@@ -78,10 +77,10 @@ async def create_user(user_in: UserCreate, current_user: User = Depends(get_admi
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to provision user on OS: {str(e)}")
 
-    # 3. Add user to local DB
+    # 3. Add user to local DB (Password no longer used for web auth, set dummy to preserve schema)
     db_user = User(
         username=user_in.username,
-        hashed_password=get_password_hash(user_in.password),
+        hashed_password="managed_by_keycloak",
         role=user_in.role
     )
     db.add(db_user)
@@ -91,7 +90,7 @@ async def create_user(user_in: UserCreate, current_user: User = Depends(get_admi
     return db_user
 
 @router.get("/", response_model=list[UserResponse])
-async def list_users(current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+async def list_users(current_user: TokenUser = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
     users = result.scalars().all()
     return users

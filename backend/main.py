@@ -50,7 +50,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     print(f"  Body: {body.decode()[:2000]}")
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
-from api.routes import auth
 from api.routes import users
 from api.routes import master
 from api.routes import env_stacks
@@ -58,7 +57,6 @@ from core.security import get_current_user
 from fastapi import Depends
 
 # Include Routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(master.router, prefix="/api/v1/master", tags=["master"])
 app.include_router(slaves.router, prefix="/api/v1/slaves", tags=["slaves"])

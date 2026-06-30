@@ -5,7 +5,6 @@ import MasterSetupPage from './pages/MasterSetupPage/MasterSetupPage'
 import SlaveSetupPage from './pages/SlaveSetupPage/SlaveSetupPage'
 import DashboardPage from './pages/DashboardPage/DashboardPage'
 import AnsibleRunnerPage from './pages/AnsibleRunnerPage/AnsibleRunnerPage'
-import LoginPage from './pages/LoginPage/LoginPage'
 import UsersPage from './pages/UsersPage/UsersPage'
 import EnvStacksPage from './pages/EnvStacksPage/EnvStacksPage'
 import MyProfilePage from './pages/MyProfilePage/MyProfilePage'
@@ -33,7 +32,6 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Routes>
-        <Route path="/login" element={<LoginPage />} />
         
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<HomePage />} />

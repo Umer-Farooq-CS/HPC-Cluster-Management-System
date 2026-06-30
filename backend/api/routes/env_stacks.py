@@ -8,7 +8,7 @@ from datetime import datetime
 from core.database import get_db
 from models.env_stack import EnvStack
 from models.user import User
-from core.security import get_admin_user, get_current_user
+from core.security import get_admin_user, get_current_user, TokenUser
 from core.config import settings
 from core.ssh_executor import SSHExecutor
 
@@ -250,7 +250,7 @@ async def list_stacks(db: AsyncSession = Depends(get_db)):
 @router.post("/", response_model=EnvStackResponse)
 async def create_stack(
     stack_in: EnvStackCreate,
-    current_user: User = Depends(get_admin_user),
+    current_user: TokenUser = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(EnvStack).where(EnvStack.name == stack_in.name))
@@ -290,7 +290,7 @@ async def create_stack(
 async def update_stack(
     stack_id: int,
     stack_in: EnvStackUpdate,
-    current_user: User = Depends(get_admin_user),
+    current_user: TokenUser = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(EnvStack).where(EnvStack.id == stack_id))
@@ -329,7 +329,7 @@ async def update_stack(
 @router.delete("/{stack_id}")
 async def delete_stack(
     stack_id: int,
-    current_user: User = Depends(get_admin_user),
+    current_user: TokenUser = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(EnvStack).where(EnvStack.id == stack_id))
@@ -353,7 +353,7 @@ async def delete_stack(
 async def assign_stack_to_user(
     stack_id: int,
     username: str,
-    current_user: User = Depends(get_admin_user),
+    current_user: TokenUser = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin assigns an environment profile to a specific user."""
@@ -381,7 +381,7 @@ async def assign_stack_to_user(
 @router.delete("/assign/{username}")
 async def unassign_stack_from_user(
     username: str,
-    current_user: User = Depends(get_admin_user),
+    current_user: TokenUser = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin resets a user's profile back to base Spack."""
@@ -407,7 +407,7 @@ async def unassign_stack_from_user(
 
 @router.get("/modules", response_model=list[str])
 async def get_available_modules(
-    current_user: User = Depends(get_current_user),
+    current_user: TokenUser = Depends(get_current_user),
 ):
     """
     Dynamically fetch all available Spack and custom Lmod modules from the master node.
@@ -434,7 +434,7 @@ async def get_available_modules(
 
 @router.get("/me", response_model=dict)
 async def get_my_profile(
-    current_user: User = Depends(get_current_user),
+    current_user: TokenUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current user's assigned profile and available stacks."""
@@ -461,7 +461,7 @@ async def get_my_profile(
 @router.post("/me/select")
 async def user_select_profile(
     body: UserEnvProfileUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: TokenUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """User selects (or clears) their own environment profile."""
@@ -494,7 +494,7 @@ async def user_select_profile(
 @router.post("/me/save-collection")
 async def user_save_lmod_collection(
     body: dict,
-    current_user: User = Depends(get_current_user),
+    current_user: TokenUser = Depends(get_current_user),
 ):
     """
     Triggers 'module save <collection_name>' on the master node for the current user.
@@ -516,7 +516,7 @@ async def user_save_lmod_collection(
 
 @router.get("/me/collections")
 async def user_list_lmod_collections(
-    current_user: User = Depends(get_current_user),
+    current_user: TokenUser = Depends(get_current_user),
 ):
     """List saved Lmod collections for the current user."""
     cmd = f"sudo -u {current_user.username} bash -c 'source /etc/profile.d/spack_setup.sh && module savelist 2>&1'"
@@ -532,7 +532,7 @@ async def user_list_lmod_collections(
 @router.post("/me/restore-collection")
 async def user_restore_lmod_collection(
     body: dict,
-    current_user: User = Depends(get_current_user),
+    current_user: TokenUser = Depends(get_current_user),
 ):
     """Restore a saved Lmod collection for the current user by injecting it into .bashrc."""
     collection_name = body.get("collection_name", "")

@@ -6,12 +6,12 @@ Due to the size and depth of the findings, the audit has been broken down into t
 
 ## Audit Document Index
 
-### 1. [Security & CIA Compliance (01_security_cia_compliance.md)](file:///home/umer/Desktop/HPC-Cluster-Script/HPC%20Cluster%20Management%20System/audit_report/01_security_cia_compliance.md)
+### 1. [DONE] [Security & CIA Compliance (01_security_cia_compliance.md)](file:///home/umer/Desktop/HPC-Cluster-Script/HPC%20Cluster%20Management%20System/audit_report/01_security_cia_compliance.md)
 *   **Confidentiality**: Hardcoded secrets, weak credentials in version control, and lack of host key verification (MitM risks).
 *   **Integrity**: Critical Remote Command Injection (RCE) vectors via unsanitized shell inputs on system endpoints.
 *   **Availability**: SSH process leaks, hanging timeouts, lack of locking/synchronization for system state modifications, and Denial of Service (DoS) risks.
 
-### 2. [Authentication & Authorization (02_authentication_authorization.md)](file:///home/umer/Desktop/HPC-Cluster-Script/HPC%20Cluster%20Management%20System/audit_report/02_authentication_authorization.md)
+### 2. [DONE] [Authentication & Authorization (02_authentication_authorization.md)](file:///home/umer/Desktop/HPC-Cluster-Script/HPC%20Cluster%20Management%20System/audit_report/02_authentication_authorization.md)
 *   **SSO Bypass**: Complete exclusion of the Keycloak IAM server from the frontend/backend applications despite its container deployment.
 *   **JWT Issues**: Dangerously long token expiration window (24 hours) without revocation lists.
 *   **Auth Mismatches**: Conflict between Open OnDemand Keycloak authentication and FastAPI `htpasswd` backend provisioning.
