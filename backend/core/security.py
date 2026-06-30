@@ -27,11 +27,10 @@ def get_keycloak_admin() -> KeycloakAdmin:
             server_url=KEYCLOAK_URL,
             username=settings.KEYCLOAK_ADMIN_USER,
             password=settings.KEYCLOAK_ADMIN_PASSWORD,
-            realm_name="master",
+            realm_name=KEYCLOAK_REALM,
             user_realm_name="master",
             verify=True
         )
-        _keycloak_admin.realm_name = KEYCLOAK_REALM
     return _keycloak_admin
 
 class TokenUser(BaseModel):
