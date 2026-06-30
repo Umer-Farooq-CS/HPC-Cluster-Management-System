@@ -8,7 +8,7 @@ SSH_CONNECT_TIMEOUT = 10
 
 # How long (seconds) a command can produce NO output before we treat it as hung
 # This is a per-line idle timeout, not a total command timeout.
-SSH_IDLE_TIMEOUT = 30
+SSH_IDLE_TIMEOUT = 600
 
 class SSHExecutor:
     def __init__(self, host: str, username: str, password: str = None, key_path: str = None):
