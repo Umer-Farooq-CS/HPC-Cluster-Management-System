@@ -1,0 +1,289 @@
+/* ================================================================
+   HPC Cluster Management System — Keycloak Login Theme
+   Style: login-form-13 (glassmorphism on HPC server room bg)
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Lato', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  color: rgba(255,255,255,0.9);
+}
+
+body {
+  background-image: url('../img/bg.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 0;
+}
+
+/* ── Hide ALL Keycloak/PatternFly chrome ── */
+#kc-header, .kc-logo-text, #kc-header-wrapper,
+.pf-v5-c-login__header, .pf-v5-c-login__footer,
+#kc-registration, .pf-v5-c-login__main-footer-band,
+.pf-v5-c-form__label, .pf-v5-c-form__label-text,
+.pf-v5-c-form__label-required, .pf-v5-c-alert__icon,
+.alert-warning, #kc-locale-wrapper { display: none !important; }
+
+/* ── Layout: center the card ── */
+.pf-v5-c-login,
+#kc-container-wrapper,
+.kc-login-page {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.pf-v5-c-login__main,
+.pf-v5-c-login__container {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  max-width: 420px !important;
+  width: 100% !important;
+}
+
+/* ── Custom card ── */
+.hpc-login-wrap {
+  width: 100%;
+  max-width: 420px;
+  padding: 2.8rem 2.4rem;
+  background: rgba(15, 15, 25, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.45);
+  color: rgba(255,255,255,0.9);
+  position: relative;
+  z-index: 2;
+  margin: 0 auto;
+}
+
+/* ── Header / logo ── */
+.hpc-login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.hpc-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.hpc-title {
+  font-family: 'Lato', sans-serif;
+  font-weight: 300;
+  font-size: 1.55rem;
+  color: #fff;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.3rem;
+}
+
+.hpc-subtitle {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.04em;
+}
+
+/* ── Error alert ── */
+.hpc-alert {
+  display: flex;
+  align-items: center;
+  background: rgba(220, 53, 69, 0.22);
+  border: 1px solid rgba(220, 53, 69, 0.45);
+  border-radius: 12px;
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 18px;
+  backdrop-filter: blur(6px);
+}
+
+/* ── Form groups ── */
+.hpc-form-group {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.hpc-password-wrap { position: relative; }
+
+/* ── Inputs ── */
+.hpc-input {
+  width: 100%;
+  height: 50px;
+  padding: 0 48px 0 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  border-radius: 40px;
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.3s, background 0.3s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.hpc-input::placeholder { color: rgba(255,255,255,0.65); }
+
+.hpc-input:focus {
+  background: transparent;
+  border-color: rgba(255,255,255,0.4);
+}
+
+.hpc-input:-webkit-autofill,
+.hpc-input:-webkit-autofill:hover,
+.hpc-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255,255,255,0.08) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ── Eye toggle ── */
+.hpc-eye-toggle {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.hpc-eye-toggle:hover { opacity: 1; }
+
+/* ── Options row ── */
+.hpc-form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Checkbox ── */
+.hpc-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  user-select: none;
+}
+
+.hpc-checkbox-wrap input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #fbceb5;
+  cursor: pointer;
+}
+
+/* ── Links ── */
+.hpc-link {
+  color: rgba(255,255,255,0.8) !important;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.hpc-link:hover { color: #fbceb5 !important; }
+
+/* ── Sign In button ── */
+.hpc-btn-primary {
+  display: block;
+  width: 100%;
+  height: 50px;
+  border-radius: 40px;
+  background: #fbceb5;
+  border: 1px solid #fbceb5;
+  color: #000;
+  font-family: 'Lato', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.3s;
+  outline: none;
+  box-shadow: 0 4px 20px rgba(251,206,181,0.25);
+}
+
+.hpc-btn-primary:hover {
+  background: transparent;
+  color: #fbceb5;
+  border-color: #fbceb5;
+  box-shadow: none;
+}
+
+/* ── Social divider ── */
+.hpc-social-divider {
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  margin: 20px 0 14px;
+}
+
+/* ── Social buttons ── */
+.hpc-social { display: flex; flex-direction: column; gap: 10px; }
+
+.hpc-social-btn {
+  display: block;
+  width: 100%;
+  padding: 11px 20px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 40px;
+  color: #fff !important;
+  background: rgba(255,255,255,0.08);
+  text-align: center;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.hpc-social-btn:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.6);
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .hpc-login-wrap { padding: 2rem 1.5rem; }
+  .hpc-title { font-size: 1.3rem; }
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
