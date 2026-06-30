@@ -46,31 +46,52 @@ const AnsibleRunnerPage: React.FC = () => {
     fetchPlaybooks();
   }, []);
 
-  const runPlaybook = (playbook: string) => {
+  const runPlaybook = async (playbook: string) => {
     if (isRunning) return; // Prevent concurrent runs
     
     setLogs([]);
     setActivePlaybook(playbook);
     setIsRunning(true);
 
-    const wsUrl = `${import.meta.env.VITE_WS_URL}/ansible/run/${encodeURIComponent(playbook)}?token=${token}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/ansible/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ playbook_name: playbook })
+      });
+      const data = await res.json();
+      
+      if (data.status !== 'success') {
+        setLogs(prev => [...prev, `[ERROR] Failed to trigger playbook: ${data.message}`]);
+        setIsRunning(false);
+        return;
+      }
 
-    ws.onmessage = (event) => {
-      setLogs((prev) => [...prev, stripAnsi(event.data)]);
-    };
+      const wsUrl = `${import.meta.env.VITE_WS_URL}/logs/${data.task_id}?token=${token}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onclose = () => {
+      ws.onmessage = (event) => {
+        setLogs((prev) => [...prev, stripAnsi(event.data)]);
+      };
+
+      ws.onclose = () => {
+        setIsRunning(false);
+        wsRef.current = null;
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket Error: ", error);
+        setLogs((prev) => [...prev, "[ERROR] WebSocket log stream failed."]);
+        setIsRunning(false);
+      };
+    } catch (err) {
+      setLogs((prev) => [...prev, `[ERROR] Failed to start playbook: ${err}`]);
       setIsRunning(false);
-      wsRef.current = null;
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket Error: ", error);
-      setLogs((prev) => [...prev, "[ERROR] WebSocket connection failed. Check backend connectivity."]);
-      setIsRunning(false);
-    };
+    }
   };
 
   const stopPlaybook = () => {

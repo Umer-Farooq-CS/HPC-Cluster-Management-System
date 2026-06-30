@@ -144,205 +144,47 @@ async def get_registered_nodes(user: dict = Depends(get_current_user)):
     except Exception as e:
         return {"status": "error", "message": str(e), "nodes": []}
 
-@router.websocket("/deploy/ws")
-async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_db)):
+# ─── Deploy Slaves ─────────────────────────────────────────────────────────────
+from core.tasks import deploy_slaves_task
+
+@router.post("/deploy")
+async def deploy_slaves(payload: SlaveDeploymentPayload, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """
-    Accepts deployment config as the first WebSocket message (JSON),
-    then executes the pipeline and streams output back to the client.
+    Persists configuration and triggers the Celery task to deploy compute nodes.
+    Returns a task_id that the frontend can use to tail logs.
     """
-    await websocket.accept()
+    if deployment_lock.locked():
+        return {"status": "error", "message": "A deployment or build is already in progress. Please wait."}
 
-    try:
-        # Receive the deployment config as the first message
-        data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+    # DB Persistence: Clear old state and insert new
+    await db.execute(delete(ComputeNodeDB))
+    await db.execute(delete(ClusterGroupDB))
+    
+    for n in payload.nodes:
+        db_node = ComputeNodeDB(
+            id=n.mac,
+            hostname=n.hostname,
+            mac=n.mac,
+            ip=n.ip,
+            assignedImage=n.assignedImage,
+            sockets=getattr(n, "sockets", 1),
+            coresPerSocket=getattr(n, "coresPerSocket", 4),
+            threadsPerCore=getattr(n, "threadsPerCore", 1)
+        )
+        db.add(db_node)
         
-        # Token Validation
-        token = data.get("token")
-        try:
-            verify_ws_token(token)
-        except Exception as e:
-            await websocket.send_text(f"[ERROR] Unauthorized: {str(e)}")
-            await websocket.close(code=1008)
-            return
-
-        nodes_data = data.get("nodes", [])
-        groups_data = data.get("groups", [])
-        
-        if not nodes_data:
-            await websocket.send_text("[ERROR] No nodes received in deployment payload.")
-            await websocket.close()
-            return
-
-        await deployment_lock.acquire()
-        lock_acquired = True
-
-        # ---------------------------------------------------------
-        # DB Persistence: Clear old state and insert new
-        # ---------------------------------------------------------
-        await db.execute(delete(ComputeNodeDB))
-        await db.execute(delete(ClusterGroupDB))
-        
-        for n in nodes_data:
-            db_node = ComputeNodeDB(
-                id=n["mac"],
-                hostname=n["hostname"],
-                mac=n["mac"],
-                ip=n["ip"],
-                assignedImage=n.get("assignedImage"),
-                sockets=n.get("sockets", 1),
-                coresPerSocket=n.get("coresPerSocket", 4),
-                threadsPerCore=n.get("threadsPerCore", 1)
-            )
-            db.add(db_node)
-            
-        for g in groups_data:
+    if payload.groups:
+        for g in payload.groups:
             db_group = ClusterGroupDB(
-                name=g["name"],
-                members=g.get("members", ""),
-                autoSync=g.get("autoSync", False)
+                name=g.name,
+                members=g.members,
+                autoSync=getattr(g, "autoSync", False)
             )
             db.add(db_group)
-            
-        await db.commit()
-        await websocket.send_text("[SYSTEM] Cluster configuration persisted to database successfully.")
-        # ---------------------------------------------------------
-
-        executor = SSHExecutor(
-            host=settings.MASTER_IP,
-            username=settings.MASTER_USER,
-            password=settings.MASTER_PASS,
-        )
-
-        node_names = [n["hostname"] for n in nodes_data]
-        nodes_csv = ",".join(node_names)
-
-        await websocket.send_text("[SYSTEM] Connection established. Starting Phase 4 Deployment...")
-        await websocket.send_text(f"[SYSTEM] Target Nodes: {', '.join(node_names)}")
-
-        async def run_and_check(cmd: str, step_name: str):
-            async for line in executor.run_command_stream(cmd):
-                await websocket.send_text(line)
-                if "[ERROR]" in line or "[SSH ERROR]" in line or "[SYSTEM ERROR]" in line:
-                    raise Exception(f"{step_name} failed. Halting deployment.")
-
-        overwrite_flag = data.get("overwrite", False)
-
-        # Step 1: Install tools
-        await websocket.send_text("[STEP 1] Installing required packages (clustershell, genders)...")
-        await run_and_check("dnf -y install clustershell genders-ohpc 2>&1", "Step 1")
-
-        # Step 2: Register nodes in Warewulf
-        await websocket.send_text("[STEP 2] Registering nodes in Warewulf...")
-        for node in nodes_data:
-            safe_hostname = shlex.quote(node["hostname"])
-            safe_mac = shlex.quote(node["mac"])
-            safe_ip = shlex.quote(node["ip"])
-            safe_image = shlex.quote(node.get("assignedImage", "almalinux-9"))
-            await websocket.send_text(f"  -> Registering {node['hostname']} ({node['mac']}) with image {node.get('assignedImage', 'almalinux-9')}")
-            if overwrite_flag:
-                cmd_add = f"wwctl node delete {safe_hostname} --yes 2>/dev/null; wwctl node add {safe_hostname} --image {safe_image} --profile nodes --netname default --ipaddr={safe_ip} --hwaddr={safe_mac} 2>&1"
-            else:
-                cmd_add = f"wwctl node add {safe_hostname} --image {safe_image} --profile nodes --netname default --ipaddr={safe_ip} --hwaddr={safe_mac} 2>&1"
-            await run_and_check(cmd_add, f"Node registration ({node['hostname']})")
-
-        # Step 3: Rebuild Overlays
-        await websocket.send_text("[STEP 3] Rebuilding Warewulf DHCP and Node Overlays...")
-        await run_and_check("wwctl overlay build && wwctl configure --all && systemctl restart warewulfd 2>&1", "Step 3")
-
-        # Step 4: Slurm Configuration
-        await websocket.send_text("[STEP 4] Updating Slurm Configuration with Compute Node Names...")
-
-        # Group nodes by their hardware topology so we can write one NodeName line per topology group
-        from collections import defaultdict
-        topo_groups: dict = defaultdict(list)
-        for node in nodes_data:
-            sockets = node.get("sockets", 1)
-            cores   = node.get("coresPerSocket", 4)
-            threads = node.get("threadsPerCore", 1)
-            key = (sockets, cores, threads)
-            topo_groups[key].append(node["hostname"])
-
-        # Build NodeName= lines
-        node_name_lines = []
-        for (sockets, cores, threads), hostnames in topo_groups.items():
-            safe_hostnames = [shlex.quote(h) for h in hostnames]
-            csv = ",".join(safe_hostnames)
-            node_name_lines.append(
-                f"NodeName={csv} Sockets={sockets} CoresPerSocket={cores} ThreadsPerCore={threads} State=UNKNOWN"
-            )
-
-        # Delete all existing NodeName/PartitionName lines, then append fresh ones
-        partition_nodes = ",".join([shlex.quote(n["hostname"]) for n in nodes_data])
-        slurm_cmd_parts = [
-            "sed -i '/^NodeName=/d' /etc/slurm/slurm.conf",
-            "sed -i '/^PartitionName=/d' /etc/slurm/slurm.conf",
-        ]
-        for nl in node_name_lines:
-            escaped = nl.replace("/", "\\/").replace("'", "'\\''")
-            slurm_cmd_parts.append(f"echo '{nl}' >> /etc/slurm/slurm.conf")
-        slurm_cmd_parts.append(
-            f"echo 'PartitionName=normal Nodes={partition_nodes} Default=YES MaxTime=24:00:00 State=UP' >> /etc/slurm/slurm.conf"
-        )
-        slurm_cmd_parts.append("systemctl restart slurmctld 2>&1")
-        await run_and_check(" && ".join(slurm_cmd_parts), "Step 4")
-
-        # Step 5: ClusterShell Groups
-        await websocket.send_text("[STEP 5] Configuring ClusterShell Groups & Genders Database...")
         
-        # Write to clustershell local.cfg
-        cshell_lines = [f"echo '{g['name']}: {g['members']}' >> /etc/clustershell/groups.d/local.cfg" for g in groups_data]
-        if not cshell_lines:
-            cshell_lines = [
-                f"echo 'adm: master' >> /etc/clustershell/groups.d/local.cfg",
-                f"echo 'compute: {nodes_csv}' >> /etc/clustershell/groups.d/local.cfg",
-                f"echo 'all: @adm,@compute' >> /etc/clustershell/groups.d/local.cfg"
-            ]
-        
-        cmd_c_shell = f"rm -f /etc/clustershell/groups.d/local.cfg && " + " && ".join(cshell_lines) + " 2>&1"
-        await run_and_check(cmd_c_shell, "Step 5 (ClusterShell)")
-
-        # Write to genders
-        genders_lines = [f"echo -e '{g['members']}\\t{g['name']}' >> /etc/genders" for g in groups_data if not g['members'].startswith('@')]
-        
-        # Expand out CSV members into individual rows for genders file
-        expanded_genders = []
-        for g in groups_data:
-            if not g['members'].startswith('@'):
-                for member in g['members'].split(','):
-                    m = member.strip()
-                    if m:
-                        expanded_genders.append(f"echo -e '{m}\\t{g['name']}' >> /etc/genders")
-        
-        if not expanded_genders:
-            expanded_genders = ["echo -e 'master\\tsms' >> /etc/genders"]
-            for node in node_names:
-                expanded_genders.append(f"echo -e '{node}\\tcompute' >> /etc/genders")
-
-        cmd_genders = f"rm -f /etc/genders && " + " && ".join(expanded_genders) + " 2>&1"
-        await run_and_check(cmd_genders, "Step 5 (Genders)")
-
-        await websocket.send_text("\n[SYSTEM] Deployment completed successfully!")
-        await websocket.send_text("============================================================")
-        await websocket.send_text(">>> ACTION REQUIRED: Power on all Compute Nodes MANUALLY.")
-        await websocket.send_text(">>> They will PXE boot over the provisioning network.")
-        await websocket.send_text("============================================================")
-
-    except asyncio.TimeoutError:
-        try:
-            await websocket.send_text("[ERROR] Timed out waiting for deployment config from client.")
-        except:
-            pass
-    except WebSocketDisconnect:
-        print("Client disconnected during deployment")
-    except Exception as e:
-        try:
-            await websocket.send_text(f"[CRITICAL ERROR] {str(e)}")
-        except:
-            pass
-    finally:
-        if 'lock_acquired' in locals() and lock_acquired:
-            deployment_lock.release()
-        try:
-            await websocket.close()
-        except:
-            pass
+    await db.commit()
+    
+    # Trigger Celery task
+    task = deploy_slaves_task.delay(payload.dict())
+    
+    return {"status": "success", "task_id": task.id}

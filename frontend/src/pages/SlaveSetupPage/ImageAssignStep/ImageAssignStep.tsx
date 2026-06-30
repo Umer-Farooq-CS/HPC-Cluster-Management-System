@@ -111,8 +111,8 @@ export default function ImageAssignStep({ nodes, setNodes, images, setImages, on
     setIsCreating(true)
   }
 
-  // ── Launch build via WebSocket ───────────────────────────────────────────
-  const handleBuild = (e: React.FormEvent) => {
+  // ── Launch build via Celery Task & WebSocket ─────────────────────────────
+  const handleBuild = async (e: React.FormEvent) => {
     e.preventDefault()
     setImgError('')
     const cleanName = imgConfig.name.trim().toLowerCase().replace(/\s+/g, '-')
@@ -120,28 +120,46 @@ export default function ImageAssignStep({ nodes, setNodes, images, setImages, on
     if (!imgConfig.source.trim()) { setImgError('Base container source is required.'); return }
 
     setIsBuilding(true)
-    setBuildLogs([`[SYSTEM] Connecting to backend build engine...`])
+    setBuildLogs([`[SYSTEM] Triggering backend build task...`])
 
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/api/v1'
-    const ws = new WebSocket(`${wsUrl}/images/build/ws?token=${token}`)
+    try {
+      const res = await fetch(`${API}/images/build`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...imgConfig, name: cleanName })
+      })
+      const data = await res.json()
+      
+      if (data.status !== 'success') {
+        setBuildLogs(prev => [...prev, `[ERROR] Build request failed: ${data.message}`])
+        setIsBuilding(false)
+        return
+      }
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ ...imgConfig, name: cleanName }))
-    }
+      setBuildLogs(prev => [...prev, `[SYSTEM] Build task accepted. Task ID: ${data.task_id}`])
+      
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/api/v1'
+      const ws = new WebSocket(`${wsUrl}/logs/${data.task_id}?token=${token}`)
 
-    ws.onmessage = (event) => {
-      setBuildLogs(prev => [...prev, event.data])
-    }
+      ws.onmessage = (event) => {
+        setBuildLogs(prev => [...prev, event.data])
+      }
 
-    ws.onclose = () => {
-      setIsBuilding(false)
-      setBuildLogs(prev => [...prev, '[SYSTEM] Build session closed.'])
-      // Refresh list so the new image appears
-      fetchImages()
-    }
+      ws.onclose = () => {
+        setIsBuilding(false)
+        setBuildLogs(prev => [...prev, '[SYSTEM] Build session closed.'])
+        fetchImages()
+      }
 
-    ws.onerror = () => {
-      setBuildLogs(prev => [...prev, '[ERROR] WebSocket error. Is the backend running?'])
+      ws.onerror = () => {
+        setBuildLogs(prev => [...prev, '[ERROR] WebSocket log stream error. Is the backend running?'])
+        setIsBuilding(false)
+      }
+    } catch (err) {
+      setBuildLogs(prev => [...prev, `[ERROR] Failed to start build: ${err}`])
       setIsBuilding(false)
     }
   }

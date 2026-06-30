@@ -50,13 +50,13 @@ export default function SlaveSetupPage() {
     executeDeployment(false)
   }
 
-  const executeDeployment = (overwrite: boolean) => {
+  const executeDeployment = async (overwrite: boolean) => {
     setShowDeployModal(false)
     setActiveStep('deploy')
     setIsRunning(true)
     setIsFinished(false)
     setSteps(prev => prev.map(s => ({ ...s, status: 'idle', message: undefined })))
-    setLogs(['[SYSTEM] Opening WebSocket to deployment engine...'])
+    setLogs(['[SYSTEM] Triggering backend deployment task...'])
 
     const payload = {
       nodes: nodes.map(n => ({
@@ -70,81 +70,99 @@ export default function SlaveSetupPage() {
         threadsPerCore: n.threadsPerCore,
       })),
       groups: groups.map(g => ({ name: g.name, members: g.members })),
-      overwrite,
-      token: token
+      overwrite
     }
 
-    const ws = new WebSocket(`wss://${window.location.hostname}/api/v1/slaves/deploy/ws?token=${token}`)
+    try {
+      const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'
+      const res = await fetch(`${API}/slaves/deploy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+      const data = await res.json()
+      
+      if (data.status !== 'success') {
+        setLogs(prev => [...prev, `[ERROR] Deployment request failed: ${data.message}`])
+        setIsRunning(false)
+        return
+      }
 
-    ws.onopen = () => {
-      setLogs(prev => [...prev, `[SYSTEM] Connected — sending config for ${payload.nodes.length} node(s)...`])
-      ws.send(JSON.stringify(payload))
-    }
+      setLogs(prev => [...prev, `[SYSTEM] Deployment task accepted. Task ID: ${data.task_id}`])
 
-    ws.onerror = () => {
-      setLogs(prev => [...prev, '[SYSTEM ERROR] WebSocket failed to connect. Is the backend running on port 8000?'])
-      setIsRunning(false)
-    }
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/api/v1'
+      const ws = new WebSocket(`${wsUrl}/logs/${data.task_id}?token=${token}`)
 
-    ws.onmessage = (event) => {
-      const message = event.data
-      setLogs(prev => [...prev, message])
+      ws.onmessage = (event) => {
+        const message = event.data
+        setLogs(prev => [...prev, message])
 
-      if (message.includes('[ERROR]') || message.includes('[CRITICAL ERROR]')) {
+        if (message.includes('[ERROR]') || message.includes('[CRITICAL ERROR]')) {
+          setSteps(prev => {
+            const runningIdx = prev.findIndex(s => s.status === 'running')
+            if (runningIdx !== -1) {
+              const next = [...prev]
+              next[runningIdx] = { ...next[runningIdx], status: 'failed' }
+              return next
+            }
+            return prev
+          })
+          setIsRunning(false)
+          ws.close()
+          return
+        }
+
+        if (message.includes('[STEP 1]')) {
+          setSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'running' } : s))
+        } else if (message.includes('[STEP 2]')) {
+          setSteps(prev => prev.map((s, idx) => {
+            if (idx === 0) return { ...s, status: 'success' }
+            if (idx === 1) return { ...s, status: 'running' }
+            return s
+          }))
+        } else if (message.includes('[STEP 3]')) {
+          setSteps(prev => prev.map((s, idx) => {
+            if (idx === 1) return { ...s, status: 'success', message: `Registered: ${nodes.map(n => n.hostname).join(', ')}` }
+            if (idx === 2) return { ...s, status: 'running' }
+            return s
+          }))
+        } else if (message.includes('[STEP 4]')) {
+          setSteps(prev => prev.map((s, idx) => {
+            if (idx === 2) return { ...s, status: 'success' }
+            if (idx === 3) return { ...s, status: 'running' }
+            return s
+          }))
+        } else if (message.includes('[STEP 5]')) {
+          setSteps(prev => prev.map((s, idx) => {
+            if (idx === 3) return { ...s, status: 'success', message: 'Injected node map into Slurm daemon' }
+            if (idx === 4) return { ...s, status: 'running' }
+            return s
+          }))
+        }
+      }
+
+      ws.onclose = () => {
         setSteps(prev => {
-          const runningIdx = prev.findIndex(s => s.status === 'running')
-          if (runningIdx !== -1) {
-            const next = [...prev]
-            next[runningIdx] = { ...next[runningIdx], status: 'failed' }
-            return next
+          const hasFailure = prev.some(s => s.status === 'failed')
+          if (!hasFailure) {
+             return prev.map((s, idx) => idx === 4 ? { ...s, status: 'success' } : s)
           }
           return prev
         })
         setIsRunning(false)
-        ws.close()
-        return
+        setIsFinished(true)
       }
-
-      if (message.includes('[STEP 1]')) {
-        setSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'running' } : s))
-      } else if (message.includes('[STEP 2]')) {
-        setSteps(prev => prev.map((s, idx) => {
-          if (idx === 0) return { ...s, status: 'success' }
-          if (idx === 1) return { ...s, status: 'running' }
-          return s
-        }))
-      } else if (message.includes('[STEP 3]')) {
-        setSteps(prev => prev.map((s, idx) => {
-          if (idx === 1) return { ...s, status: 'success', message: `Registered: ${nodes.map(n => n.hostname).join(', ')}` }
-          if (idx === 2) return { ...s, status: 'running' }
-          return s
-        }))
-      } else if (message.includes('[STEP 4]')) {
-        setSteps(prev => prev.map((s, idx) => {
-          if (idx === 2) return { ...s, status: 'success' }
-          if (idx === 3) return { ...s, status: 'running' }
-          return s
-        }))
-      } else if (message.includes('[STEP 5]')) {
-        setSteps(prev => prev.map((s, idx) => {
-          if (idx === 3) return { ...s, status: 'success', message: 'Injected node map into Slurm daemon' }
-          if (idx === 4) return { ...s, status: 'running' }
-          return s
-        }))
+      
+      ws.onerror = () => {
+        setLogs(prev => [...prev, '[SYSTEM ERROR] WebSocket log stream error.'])
+        setIsRunning(false)
       }
-    }
-
-    ws.onclose = () => {
-      // Only mark as success if it wasn't aborted early
-      setSteps(prev => {
-        const hasFailure = prev.some(s => s.status === 'failed')
-        if (!hasFailure) {
-           return prev.map((s, idx) => idx === 4 ? { ...s, status: 'success' } : s)
-        }
-        return prev
-      })
+    } catch (err) {
+      setLogs(prev => [...prev, `[ERROR] Failed to start deployment: ${err}`])
       setIsRunning(false)
-      setIsFinished(true)
     }
   }
 

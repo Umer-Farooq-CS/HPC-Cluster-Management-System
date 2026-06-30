@@ -38,49 +38,20 @@ async def list_playbooks(user: dict = Depends(get_current_user)):
         print(f"Error fetching playbooks: {e}")
         return []
 
-@router.websocket("/run/{playbook_name}")
-async def run_playbook(websocket: WebSocket, playbook_name: str, token: str = Query(None)):
-    """Run an Ansible playbook and stream the output back to the client."""
-    await websocket.accept()
-    
-    if not token:
-        await websocket.send_text("\n\033[1;31m[ERROR] Unauthorized: Missing token\033[0m\n")
-        await websocket.close(code=1008)
-        return
+# ─── Run Playbook ──────────────────────────────────────────────────────────────
+from pydantic import BaseModel
+class PlaybookPayload(BaseModel):
+    playbook_name: str
 
-    try:
-        verify_ws_token(token)
-    except Exception as e:
-        await websocket.send_text(f"\n\033[1;31m[ERROR] Unauthorized: {str(e)}\033[0m\n")
-        await websocket.close(code=1008)
-        return
-    
-    executor = SSHExecutor(
-        host=settings.MASTER_IP,
-        username=settings.MASTER_USER,
-        password=settings.MASTER_PASS
-    )
-    
-    # Command runs ansible-playbook on the remote node inside the scripts/ansible directory
-    # so that inventory files are resolved correctly.
-    safe_playbook_name = shlex.quote(playbook_name)
-    command = f"cd {REMOTE_ANSIBLE_DIR} && ansible-playbook -i inventory.ini {safe_playbook_name}"
-    
-    try:
-        await websocket.send_text(f"\033[1;34m[*] Executing Playbook: {playbook_name} on {settings.MASTER_IP}...\033[0m\n")
+from core.tasks import run_playbook_task
+
+@router.post("/run")
+async def run_playbook(payload: PlaybookPayload, user: dict = Depends(get_current_user)):
+    """
+    Triggers the Celery task to run an Ansible playbook.
+    """
+    if deployment_lock.locked():
+        return {"status": "error", "message": "A deployment or build is already in progress. Please wait."}
         
-        async with deployment_lock:
-            async for line in executor.run_command_stream(command):
-                # Send each line of stdout/stderr to the frontend
-                await websocket.send_text(line + "\n")
-            
-        await websocket.send_text(f"\n\033[1;32m[+] Execution completed for {playbook_name}\033[0m\n")
-    except WebSocketDisconnect:
-        print("Client disconnected from playbook stream.")
-    except Exception as e:
-        await websocket.send_text(f"\n\033[1;31m[ERROR] {str(e)}\033[0m\n")
-    finally:
-        try:
-            await websocket.close()
-        except Exception:
-            pass
+    task = run_playbook_task.delay({"playbook_name": payload.playbook_name})
+    return {"status": "success", "task_id": task.id}
