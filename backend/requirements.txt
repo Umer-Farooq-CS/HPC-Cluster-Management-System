@@ -12,3 +12,5 @@ pydantic-settings
 PyJWT
 bcrypt
 pyyaml
+celery
+redis
