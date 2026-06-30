@@ -1,0 +1,26 @@
+flowchart TB
+    subgraph Bastion["Bastion Host (Docker Compose)"]
+        direction TB
+        Nginx["Nginx Reverse Proxy"]
+        Grafana["Grafana\n(Visualization & Alerts)"]
+        Prometheus[("Prometheus\n(Time-Series Database)")]
+        
+        Nginx -->|Routes /grafana| Grafana
+        Grafana -->|Queries PromQL| Prometheus
+    end
+
+    subgraph Master["Master Node (192.168.10.2)"]
+        NodeExporterMaster["Node Exporter\n(Port 9100)"]
+        SlurmExporter["Slurm Exporter\n(Port 9092)"]
+    end
+
+    subgraph Compute["Stateless Compute Nodes (192.168.20.x)"]
+        NodeExporterC1["Node Exporter\n(Port 9100)"]
+        NodeExporterC2["Node Exporter\n(Port 9100)"]
+    end
+
+    %% Scraping Connections
+    Prometheus -. "Scrapes /metrics (every 15s)" .-> NodeExporterMaster
+    Prometheus -. "Scrapes /metrics (every 15s)" .-> SlurmExporter
+    Prometheus -. "Scrapes /metrics (every 15s)" .-> NodeExporterC1
+    Prometheus -. "Scrapes /metrics (every 15s)" .-> NodeExporterC2

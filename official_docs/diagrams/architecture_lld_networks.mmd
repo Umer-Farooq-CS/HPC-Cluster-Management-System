@@ -1,0 +1,14 @@
+graph LR
+    subgraph Networks
+        Campus[External Campus / Internet]
+        AdminNet[Admin/Web Network: 192.168.10.x]
+        ProvNet[Provisioning Network: 192.168.20.x]
+    end
+    
+    BastionIP[Bastion Server: .100] --- AdminNet
+    MasterIP1[Master Admin IP: .2] --- AdminNet
+    MasterIP2[Master Prov IP: .1] --- ProvNet
+    Compute1[Compute pc2: .10] --- ProvNet
+    Compute2[Compute pc3: .11] --- ProvNet
+    
+    Campus -. NAT/Masquerade .-> MasterIP1

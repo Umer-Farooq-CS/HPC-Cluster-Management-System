@@ -1,0 +1,57 @@
+flowchart TB
+    subgraph Bastion["Bastion Host (Docker Compose)"]
+        direction TB
+        Nginx["Nginx Reverse Proxy\n(TLS, HTTPS & Static Assets)"]
+        FE["Frontend UI\n(React + Vite)"]
+        BE["Backend API\n(FastAPI)"]
+        IAM["Keycloak\n(OIDC/SSO)"]
+        DB[("PostgreSQL\n(State & Configs)")]
+        Redis[("Redis\n(Cache, Queue & Logs)")]
+        Celery["Celery Worker\n(Background Task Queue)"]
+        Prom["Prometheus\n(TSDB Metrics)"]
+        Graf["Grafana\n(Visualization & Alerts)"]
+        
+        Nginx -->|Serves| FE
+        Nginx -->|API / WS Routing| BE
+        Nginx -->|Auth Routing| IAM
+        Nginx -->|Reverse Proxy /grafana| Graf
+        BE -->|Persists State| DB
+        BE -->|Cache & Log Access| Redis
+        BE -->|Task Broker| Redis
+        Celery -->|Pulls Tasks| Redis
+        IAM -->|User Store| DB
+        IAM -.->|OIDC Authentication| Graf
+        Graf -->|Queries PromQL| Prom
+    end
+
+    subgraph Master["HPC Master Node (AlmaLinux 9)"]
+        direction TB
+        OOD["Open OnDemand\n(Port 8008)"]
+        WW4["Warewulf 4\n(PXE Provisioner)"]
+        Slurm["Slurmctld\n(Workload Manager)"]
+        MariaDB[("MariaDB\n(Job Accounting)")]
+        NFS["NFS Export\n(/export/apps)"]
+        NodeExpM["Node Exporter\n(Port 9100)"]
+        SlurmExp["Slurm Exporter\n(Port 9092)"]
+        
+        OOD -.->|Submits Jobs| Slurm
+        Slurm -.->|Logs Accounting| MariaDB
+    end
+
+    subgraph Compute["Compute Nodes (Stateless)"]
+        direction LR
+        PC2["pc2\n(192.168.20.10)\nNode Exporter"]
+        PC3["pc3\n(192.168.20.11)\nNode Exporter"]
+    end
+
+    %% Connections
+    BE -->|Reads Cached State| Redis
+    Celery -->|Asynchronous SSH Exec| Master
+    Prom -.->|Scrapes /metrics 9100| NodeExpM
+    Prom -.->|Scrapes /metrics 9092| SlurmExp
+    Prom -.->|Scrapes /metrics 9100| PC2
+    Prom -.->|Scrapes /metrics 9100| PC3
+    IAM -. OIDC Token Flow .-> OOD
+    WW4 -->|PXE Boot & OS Overlays| Compute
+    NFS -->|systemd automount| Compute
+    Slurm -->|Job Dispatch & Munge| Compute
