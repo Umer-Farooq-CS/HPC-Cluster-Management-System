@@ -188,11 +188,20 @@
           auth:
             - "AuthType openid-connect"
             - "Require valid-user"
-            - "OIDCSSLValidateServer Off"
 
           # Enable hook script to auto-create home directories on first login
           pun_pre_hook_root_cmd: "/etc/ood/config/create_user_home.sh"
 
+
+    - name: Configure global OIDC SSL validation
+      copy:
+        dest: /etc/httpd/conf.d/ood-oidc-ssl.conf
+        content: |
+          # Disable SSL server validation for self-signed certificates in mod_auth_openidc
+          OIDCSSLValidateServer Off
+        owner: root
+        group: apache
+        mode: '0640'
 
     - name: Update OOD Portal Apache Config
       command: /opt/ood/ood-portal-generator/sbin/update_ood_portal

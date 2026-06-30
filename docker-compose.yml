@@ -45,8 +45,9 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       # Nginx Proxy Settings
-      KC_PROXY_HEADERS: "xforwarded"
-      KC_HOSTNAME: ${DOMAIN}
+      KC_PROXY: "edge"
+      KC_HOSTNAME_URL: "https://${DOMAIN}"
+      KC_HOSTNAME_ADMIN_URL: "https://${DOMAIN}"
     volumes:
       - ./backend/keycloak-themes/hpc-theme:/opt/keycloak/themes/hpc-theme:ro
     command: start-dev
