@@ -6,8 +6,7 @@ from typing import Optional
 
 from core.ssh_executor import SSHExecutor
 from core.config import settings
-from core.security import get_current_user, SECRET_KEY, ALGORITHM
-import jwt
+from core.security import get_current_user, verify_ws_token
 
 router = APIRouter()
 
@@ -68,7 +67,7 @@ async def deploy_master_ws(websocket: WebSocket, token: str = Query(None)):
             return
 
         try:
-            jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            verify_ws_token(token)
         except Exception as e:
             await websocket.send_text(f"[ERROR] Unauthorized: {str(e)}")
             await websocket.close(code=1008)

@@ -60,3 +60,11 @@ async def get_super_admin_user(current_user: TokenUser = Depends(get_current_use
     if current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="Super Admin privileges required")
     return current_user
+
+def verify_ws_token(token: str):
+    try:
+        public_key = "-----BEGIN PUBLIC KEY-----\n" + keycloak_openid.public_key() + "\n-----END PUBLIC KEY-----"
+        options = {"verify_signature": True, "verify_aud": False, "verify_exp": True}
+        jwt.decode(token, public_key, algorithms=["RS256"], options=options)
+    except Exception as e:
+        raise ValueError(f"Invalid token: {e}")

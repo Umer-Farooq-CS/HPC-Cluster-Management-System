@@ -6,8 +6,7 @@ from core.ssh_executor import SSHExecutor
 from core.config import settings
 from core.locks import deployment_lock
 import shlex
-from core.security import get_current_user, SECRET_KEY, ALGORITHM
-import jwt
+from core.security import get_current_user, verify_ws_token
 
 router = APIRouter()
 
@@ -50,7 +49,7 @@ async def run_playbook(websocket: WebSocket, playbook_name: str, token: str = Qu
         return
 
     try:
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        verify_ws_token(token)
     except Exception as e:
         await websocket.send_text(f"\n\033[1;31m[ERROR] Unauthorized: {str(e)}\033[0m\n")
         await websocket.close(code=1008)

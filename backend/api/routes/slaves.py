@@ -59,8 +59,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete
 from core.database import get_db
 from models.slaves import ComputeNodeDB, ClusterGroupDB
-from core.security import get_current_user, SECRET_KEY, ALGORITHM
-import jwt
+from core.security import get_current_user, verify_ws_token
 @router.get("/arp")
 async def get_arp_table(user: dict = Depends(get_current_user)):
     """
@@ -160,7 +159,7 @@ async def deploy_slaves_ws(websocket: WebSocket, db: AsyncSession = Depends(get_
         # Token Validation
         token = data.get("token")
         try:
-            jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            verify_ws_token(token)
         except Exception as e:
             await websocket.send_text(f"[ERROR] Unauthorized: {str(e)}")
             await websocket.close(code=1008)
