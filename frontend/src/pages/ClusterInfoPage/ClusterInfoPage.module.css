@@ -35,6 +35,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
+  height: calc(100vh - 250px);
   min-height: 600px;
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -47,6 +48,7 @@
   border-right: 1px solid var(--border-subtle);
   padding: var(--space-lg) 0;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .navGroup {
@@ -93,6 +95,7 @@
   flex: 1;
   padding: var(--space-xl);
   background: var(--bg-surface);
+  overflow-y: auto;
 }
 
 .detailPanel {
