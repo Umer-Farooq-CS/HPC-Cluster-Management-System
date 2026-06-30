@@ -441,9 +441,13 @@ async def get_my_profile(
     all_stacks_result = await db.execute(select(EnvStack).order_by(EnvStack.id))
     all_stacks = all_stacks_result.scalars().all()
 
+    user_result = await db.execute(select(User).where(User.username == current_user.username))
+    db_user = user_result.scalars().first()
+    env_profile = db_user.env_profile if db_user else None
+
     return {
         "username": current_user.username,
-        "env_profile": current_user.env_profile,
+        "env_profile": env_profile,
         "available_stacks": [
             {
                 "id": s.id,
@@ -465,8 +469,13 @@ async def user_select_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """User selects (or clears) their own environment profile."""
+    user_result = await db.execute(select(User).where(User.username == current_user.username))
+    db_user = user_result.scalars().first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found in local database")
+
     if body.stack_name == "" or body.stack_name == "none":
-        current_user.env_profile = None
+        db_user.env_profile = None
         await db.commit()
         try:
             await _inject_bashrc(current_user.username, _build_base_bashrc_block())
@@ -480,7 +489,7 @@ async def user_select_profile(
     if not stack:
         raise HTTPException(status_code=404, detail=f"Stack '{body.stack_name}' not found")
 
-    current_user.env_profile = stack.name
+    db_user.env_profile = stack.name
     await db.commit()
 
     try:
