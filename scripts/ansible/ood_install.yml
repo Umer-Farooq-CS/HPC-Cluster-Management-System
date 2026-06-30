@@ -8,6 +8,7 @@
     ood_port: "8443"
     keycloak_realm: "hpc"
     keycloak_client_id: "open-ondemand"
+    oidc_client_secret: "REPLACE_WITH_KEYCLOAK_CLIENT_SECRET"  # Get from Keycloak Admin Console: hpc realm → Clients → open-ondemand → Credentials
     slurm_cluster_name: "hpc-cluster"
 
   tasks:
@@ -150,31 +151,45 @@
       args:
         creates: /etc/pki/tls/certs/ood.crt
 
-    - name: Configure OOD Portal (ood_portal.yml)
+    - name: Configure OOD Portal (ood_portal.yml) with Keycloak OIDC
       copy:
         dest: /etc/ood/config/ood_portal.yml
         content: |
-          # Use port 8443 for isolated SSL
+          # =========================================================
+          # Open OnDemand Portal Configuration
+          # Authentication: Keycloak OIDC via mod_auth_openidc
+          # =========================================================
+
           port: {{ ood_port }}
-          # Server Name
           servername: '{{ ood_domain }}'
-          
+
           # SSL Configuration
           ssl:
             - 'SSLCertificateFile "/etc/pki/tls/certs/ood.crt"'
             - 'SSLCertificateKeyFile "/etc/pki/tls/private/ood.key"'
-          
-          # Allow embedding in iframes from the Bastion Host
-          security_csp_frame_ancestors: "https://192.168.10.100 https://localhost"
-          
-          # Authentication configuration (Basic Auth)
+
+          # Allow embedding in iframes from the management portal
+          security_csp_frame_ancestors: "https://{{ ood_domain }} https://localhost"
+
+          # --------------------------------------------------------
+          # OIDC (Keycloak) Authentication via mod_auth_openidc
+          # --------------------------------------------------------
+          oidc_uri: /oidc
+          oidc_provider_metadata_url: "http://{{ ood_domain }}:8080/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
+          oidc_client_id: "{{ keycloak_client_id }}"
+          oidc_client_secret: "{{ oidc_client_secret }}"
+          oidc_remote_user_claim: "preferred_username"
+          oidc_scope: "openid profile email"
+          oidc_session_inactivity_timeout: 28800
+          oidc_session_max_duration: 28800
+          oidc_state_max_number_of_cookies: "10 true"
+          oidc_cookie_same_site: "Off"
+
           auth:
-            - 'AuthType Basic'
-            - 'AuthName "Open OnDemand"'
-            - 'AuthUserFile /etc/ood/config/htpasswd'
-            - 'Require valid-user'
-          
-          # Enable hook script to auto-create home directories for any web user
+            - "AuthType openid-connect"
+            - "Require valid-user"
+
+          # Enable hook script to auto-create home directories on first login
           pun_pre_hook_root_cmd: "/etc/ood/config/create_user_home.sh"
 
 

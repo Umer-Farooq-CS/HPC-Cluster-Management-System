@@ -46,7 +46,9 @@ services:
       KC_HEALTH_ENABLED: "true"
       # Nginx Proxy Settings
       KC_PROXY_HEADERS: "xforwarded"
-      KC_HOSTNAME: ${DOMAIN}
+      # Pin the external URL so the OIDC discovery document advertises the correct address
+      KC_HOSTNAME_URL: "http://${DOMAIN}:8080"
+      KC_HOSTNAME_ADMIN_URL: "http://${DOMAIN}:8080"
     command: start-dev
     ports:
       - "8080:8080"
