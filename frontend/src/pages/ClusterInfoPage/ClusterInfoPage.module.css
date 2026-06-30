@@ -1,5 +1,6 @@
 .pageContainer {
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: var(--space-xl) var(--space-md);
   animation: fadeIn var(--transition-slow);
@@ -96,6 +97,7 @@
   padding: var(--space-xl);
   background: var(--bg-surface);
   overflow-y: auto;
+  min-width: 0;
 }
 
 .detailPanel {
@@ -195,7 +197,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
   margin-top: var(--space-md);
 }
 
@@ -229,10 +231,13 @@
 @media (max-width: 768px) {
   .guiContainer {
     flex-direction: column;
+    height: auto;
+    min-height: auto;
   }
   .sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
+    height: auto;
   }
 }
