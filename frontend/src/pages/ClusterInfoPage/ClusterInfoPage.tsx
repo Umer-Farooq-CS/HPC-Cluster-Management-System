@@ -107,6 +107,40 @@ export default function ClusterInfoPage() {
               <span className={styles.dataValue}>{general.totalRam}</span>
             </div>
           </div>
+          
+          <div className={styles.sectionGroup} style={{ marginTop: 'var(--space-2xl)' }}>
+            <h3 className={styles.sectionHeading}>Nodes Overview (sinfo)</h3>
+            <div className={styles.tableWrapper}>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Node</th>
+                    <th>Type</th>
+                    <th>State</th>
+                    <th>Cores</th>
+                    <th>Memory</th>
+                    <th>Active Jobs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nodes.map(node => (
+                    <tr key={node.id}>
+                      <td style={{ fontWeight: 600 }}>{node.name}</td>
+                      <td>{node.type}</td>
+                      <td>
+                        <span className={node.state === 'Active' ? styles.badgeSuccess : styles.badge}>
+                          {node.state}
+                        </span>
+                      </td>
+                      <td>{node.details.cpus}</td>
+                      <td>{node.details.ram}</td>
+                      <td>{node.details.activeJobs}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       );
     }
