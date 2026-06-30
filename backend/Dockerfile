@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     libssl-dev \
     iproute2 \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python requirements
@@ -23,5 +24,5 @@ COPY . /app/
 
 EXPOSE 8000
 
-# Start Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start Uvicorn and run ssh-keyscan to populate known_hosts for the MASTER_IP
+CMD ["sh", "-c", "mkdir -p ~/.ssh && ssh-keyscan -H ${MASTER_IP:-192.168.10.2} >> ~/.ssh/known_hosts 2>/dev/null && uvicorn main:app --host 0.0.0.0 --port 8000"]
