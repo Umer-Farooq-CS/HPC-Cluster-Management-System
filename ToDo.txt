@@ -1,0 +1,5 @@
+1. Design Theme based Login Page for Both OOD and HPC Portal
+2. See why job failing and why its stuck on Queue (Check with simple scripts)
+3. Mark 2nd Audit Report as complete
+4. Update Frontend Dashboard
+5. Move onto Grafana and Prometheus @13_Hardware_Telemetry_and_Grafana.md
