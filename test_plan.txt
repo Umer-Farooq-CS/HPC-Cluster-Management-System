@@ -1,5 +1,0 @@
-1. Revert Keycloak docker-compose KC_HOSTNAME_URL back to KC_HOSTNAME: ${DOMAIN}
-2. Restart Keycloak
-3. Edit OOD config:
-   oidc_provider_metadata_url: "https://192.168.10.2/realms/hpc/.well-known/openid-configuration"
-   Add OIDCSSLValidateServer Off in apache config to allow self-signed certs.
