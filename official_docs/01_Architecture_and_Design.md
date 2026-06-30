@@ -58,16 +58,16 @@ flowchart TB
     end
 
     %% Connections
-    BE == "Reads Cached State" ==> Redis
-    Celery == "Asynchronous SSH Exec" ==> Master
+    BE == "Reads Cached State" ===> Redis
+    Celery == "Asynchronous SSH Exec" ===> Master
     Prom -.->|Scrapes /metrics (9100)| NodeExpM
     Prom -.->|Scrapes /metrics (9092)| SlurmExp
     Prom -.->|Scrapes /metrics (9100)| PC2
     Prom -.->|Scrapes /metrics (9100)| PC3
     IAM -. "OIDC Token Flow" .-> OOD
-    WW4 == "PXE Boot / iPXE / OS Overlays" ==> Compute
-    NFS == "systemd automount" ==> Compute
-    Slurm == "Job Dispatch / Munge" ==> Compute
+    WW4 == "PXE Boot / iPXE / OS Overlays" ===> Compute
+    NFS == "systemd automount" ===> Compute
+    Slurm == "Job Dispatch / Munge" ===> Compute
 ```
 
 ### The Three Layers Explained

@@ -50,21 +50,21 @@ The backend is written in Python using FastAPI. It is fully asynchronous (`async
 
 ---
 
-## 4. The WebSocket Execution Pipeline (CRITICAL)
+## 4. The Background Execution Pipeline (Celery)
 
-The most complex part of the backend is how it executes bash commands on the Master Node. Because tasks like "Install OpenHPC" or "Compile a Warewulf container" can take 30+ minutes, standard HTTP requests would timeout.
+The most complex part of the backend is how it executes bash commands on the Master Node. Because tasks like "Install OpenHPC" or "Compile a Warewulf container" can take 30+ minutes, standard HTTP requests would timeout, and long-lived WebSockets are vulnerable to connection drops.
 
-**The Solution:** WebSockets + `asyncssh` / Ansible Runner.
+**The Solution:** Celery Background Workers + Redis Log Streaming.
 
 ### How it works:
-1. The frontend initiates a WebSocket connection to a specific endpoint (e.g., `ws://backend/api/v1/master/deploy/ws`).
-2. The user passes a JSON payload with credentials.
-3. The FastAPI backend opens an asynchronous SSH tunnel to the Master Node.
-4. The backend executes a bash script or an Ansible playbook on the remote server.
-5. As the remote server produces `stdout` and `stderr` (e.g., `dnf install` output), the backend captures these lines dynamically and `await websocket.send_json({"log": line})`.
-6. The frontend receives the JSON and appends it to a black terminal window component, providing real-time feedback to the user.
+1. The frontend initiates an HTTP POST request to an API endpoint (e.g., `POST /api/v1/images/build`).
+2. The FastAPI backend validates the request, dispatches a Celery task (e.g., `build_image_task.delay()`), and immediately returns a JSON response containing a `task_id`.
+3. The Celery Worker (running in a separate container) picks up the task, opens an asynchronous SSH tunnel to the Master Node, and executes the bash script or Ansible playbook.
+4. As the remote server produces `stdout` and `stderr`, the Celery task captures these lines and pushes them to a Redis List (`rpush task_logs:{task_id}`).
+5. The frontend takes the returned `task_id` and connects to the generic WebSocket endpoint: `ws://backend/api/v1/logs/{task_id}`.
+6. This WebSocket simply tails the Redis List, streaming the history and live output back to the UI. If the user disconnects and reconnects, the WebSocket replays the log history from Redis without interrupting the background execution.
 
-If you are writing a new provisioning script, you **must** use this WebSocket pattern rather than a standard REST POST endpoint.
+If you are writing a new provisioning script that takes more than a few seconds, you **must** use this Celery + Redis pattern.
 
 ---
 
