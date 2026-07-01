@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  keycloak-db:
+    image: postgres:15-alpine
+    container_name: master-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak_admin
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - master-network
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: master-keycloak
+    environment:
+      # Keycloak Database Settings
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak_admin
+      KC_DB_PASSWORD: keycloak_password
+      # Initial Admin User
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Host settings
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_PROXY_HEADERS: "xforwarded"
+      KC_HOSTNAME: "${MASTER_IP:-192.168.10.2}"
+    volumes:
+      - ./backend/keycloak-themes/hpc-theme:/opt/keycloak/themes/hpc-theme:ro
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak-db
+    networks:
+      - master-network
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: master-slurm-db
+    environment:
+      MARIADB_ROOT_PASSWORD: slurm_root_pass
+      MARIADB_DATABASE: slurm_acct_db
+      MARIADB_USER: slurm
+      MARIADB_PASSWORD: slurm_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - slurm_db_data:/var/lib/mysql
+    networks:
+      - master-network
+    restart: unless-stopped
+
+networks:
+  master-network:
+    driver: bridge
+
+volumes:
+  keycloak_db_data:
+  slurm_db_data:

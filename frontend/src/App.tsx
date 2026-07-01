@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import HomePage from './pages/HomePage/HomePage'
+import BastionSetupPage from './pages/BastionSetupPage/BastionSetupPage'
 import MasterSetupPage from './pages/MasterSetupPage/MasterSetupPage'
 import SlaveSetupPage from './pages/SlaveSetupPage/SlaveSetupPage'
 import DashboardPage from './pages/DashboardPage/DashboardPage'
@@ -35,6 +36,7 @@ function App() {
         
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<HomePage />} />
+          <Route path="provision/bastion" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><BastionSetupPage /></ProtectedRoute>} />
           <Route path="provision/master" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><MasterSetupPage /></ProtectedRoute>} />
           <Route path="provision/slave" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><SlaveSetupPage /></ProtectedRoute>} />
           <Route path="users" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><UsersPage /></ProtectedRoute>} />

@@ -72,10 +72,13 @@ export default function Navbar() {
                 {isAdminDropdownOpen && (
                   <ul className={styles.dropdownMenu}>
                     <li>
-                      <Link to="/provision/master" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/master' ? styles.dropdownItemActive : ''}`}>Master Provisioning</Link>
+                      <Link to="/provision/bastion" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/bastion' ? styles.dropdownItemActive : ''}`}>Bastion Setup</Link>
                     </li>
                     <li>
-                      <Link to="/provision/slave" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/slave' ? styles.dropdownItemActive : ''}`}>Compute Nodes</Link>
+                      <Link to="/provision/master" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/master' ? styles.dropdownItemActive : ''}`}>Master Setup</Link>
+                    </li>
+                    <li>
+                      <Link to="/provision/slave" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/slave' ? styles.dropdownItemActive : ''}`}>Compute Setup</Link>
                     </li>
                     <li>
                       <Link to="/users" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/users' ? styles.dropdownItemActive : ''}`}>User Management</Link>

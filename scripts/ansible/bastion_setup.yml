@@ -1,0 +1,71 @@
+---
+- name: Bastion Host Provisioning (Teleport & Firewall)
+  hosts: localhost
+  connection: local
+  become: yes
+
+  vars:
+    teleport_domain: "hpc.local"
+    admin_ip: "192.168.10.100"
+
+  tasks:
+    - name: Ensure firewalld is installed and running
+      dnf:
+        name: firewalld
+        state: present
+
+    - name: Start and enable firewalld
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Open HTTP and HTTPS ports for Web App
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - http
+        - https
+
+    - name: Restrict SSH to Admin IP only
+      ansible.posix.firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ admin_ip }}" service name="ssh" accept'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Drop all other SSH traffic
+      ansible.posix.firewalld:
+        service: ssh
+        permanent: yes
+        state: disabled
+        immediate: yes
+
+    - name: Add Teleport repository
+      yum_repository:
+        name: teleport
+        description: Teleport RPM Repository
+        baseurl: https://rpm.releases.teleport.dev/centos/$releasever/$basearch/stable/v15
+        gpgcheck: yes
+        gpgkey: https://rpm.releases.teleport.dev/RPM-GPG-KEY-teleport
+
+    - name: Install Teleport
+      dnf:
+        name: teleport
+        state: present
+        update_cache: yes
+
+    - name: Configure Teleport
+      template:
+        src: teleport.yaml.j2
+        dest: /etc/teleport.yaml
+      ignore_errors: yes # Template might not exist yet, simplified for demo
+
+    - name: Start and enable Teleport
+      systemd:
+        name: teleport
+        state: started
+        enabled: yes

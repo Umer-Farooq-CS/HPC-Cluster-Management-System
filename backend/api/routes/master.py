@@ -19,12 +19,12 @@ def _make_executor(ip: str, pass_: str) -> SSHExecutor:
 
 class MasterDeployPayload(BaseModel):
     # Network Configuration
-    masterIp: str
+    masterIp: str = "192.168.10.2"
     masterPass: str
-    dataIp: str
-    dataIpCidr: int
-    provIp: str
-    provIpCidr: int
+    dataIp: str = "192.168.30.1"
+    dataIpCidr: int = 24
+    provIp: str = "192.168.20.1"
+    provIpCidr: int = 24
     gateway: str
     dnsServers: str
 
@@ -88,6 +88,83 @@ async def deploy_master_ws(websocket: WebSocket, token: str = Query(None)):
 
         await websocket.send_text(f"[SYSTEM] Connecting to Master Node at {cfg.masterIp}...")
         
+        # ── Step 0: Docker and Keycloak (Master Containers) ───────────────────
+        await websocket.send_text("[STEP 0] Installing Docker and booting Keycloak/MariaDB on Master...")
+        docker_cmd = f"""
+        dnf -y install dnf-plugins-core 2>&1
+        dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo 2>&1
+        dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin 2>&1
+        systemctl enable --now docker 2>&1
+        
+        cat << 'EOF' > /root/docker-compose-master.yml
+version: '3.8'
+
+services:
+  keycloak-db:
+    image: postgres:15-alpine
+    container_name: master-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak_admin
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - master-network
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: master-keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak_admin
+      KC_DB_PASSWORD: keycloak_password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_PROXY_HEADERS: "xforwarded"
+      KC_HOSTNAME: "{cfg.masterIp}"
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak-db
+    networks:
+      - master-network
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: master-slurm-db
+    environment:
+      MARIADB_ROOT_PASSWORD: slurm_root_pass
+      MARIADB_DATABASE: slurm_acct_db
+      MARIADB_USER: slurm
+      MARIADB_PASSWORD: slurm_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - slurm_db_data:/var/lib/mysql
+    networks:
+      - master-network
+    restart: unless-stopped
+
+networks:
+  master-network:
+    driver: bridge
+
+volumes:
+  keycloak_db_data:
+  slurm_db_data:
+EOF
+        cd /root && docker compose -f docker-compose-master.yml up -d 2>&1
+        """
+        await run_and_check(docker_cmd, "Step 0 (Docker & IAM/DB Deploy)")
+
         # ── Step 1: Network Configurations ─────────────────────────────────────
         await websocket.send_text("[STEP 1] Configuring Data and Provisioning interfaces...")
         # Since NM connections might lock out on modification, we apply them safely

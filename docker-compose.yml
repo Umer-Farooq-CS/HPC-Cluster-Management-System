@@ -27,36 +27,6 @@ services:
       - hpc-network
     restart: unless-stopped
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.0
-    container_name: hpc-keycloak
-    environment:
-      # Keycloak Database Settings
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/hpc_cluster
-      KC_DB_USERNAME: hpc_admin
-      KC_DB_PASSWORD: hpc_password
-      # Initial Admin User
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      # Host settings - Keycloak 24 config for Nginx reverse proxy
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
-      KC_HEALTH_ENABLED: "true"
-      # Trust Nginx X-Forwarded-* headers (Keycloak 24 syntax)
-      KC_PROXY_HEADERS: "xforwarded"
-      KC_HOSTNAME: "192.168.10.2"
-    volumes:
-      - ./backend/keycloak-themes/hpc-theme:/opt/keycloak/themes/hpc-theme:ro
-    command: start-dev
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-    networks:
-      - hpc-network
-    restart: unless-stopped
-
   backend:
     build: ./backend
     container_name: hpc-backend
@@ -66,7 +36,6 @@ services:
     depends_on:
       - postgres
       - redis
-      - keycloak
     networks:
       - hpc-network
     restart: unless-stopped
@@ -135,22 +104,20 @@ services:
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-      - GF_SERVER_ROOT_URL=https://192.168.10.100/grafana/
+      - GF_SERVER_ROOT_URL=https://${DOMAIN:-192.168.10.2}/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=false
       - GF_AUTH_GENERIC_OAUTH_ENABLED=true
       - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
       - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
       - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=grafana
       - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
-      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://192.168.10.100/realms/master/protocol/openid-connect/auth
-      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://hpc-keycloak:8080/realms/master/protocol/openid-connect/token
-      - GF_AUTH_GENERIC_OAUTH_API_URL=http://hpc-keycloak:8080/realms/master/protocol/openid-connect/userinfo
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://${DOMAIN:-192.168.10.2}/realms/master/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://${MASTER_IP:-192.168.10.2}:8080/realms/master/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://${MASTER_IP:-192.168.10.2}:8080/realms/master/protocol/openid-connect/userinfo
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      - keycloak
     networks:
       - hpc-network
     restart: unless-stopped
