@@ -8,7 +8,7 @@ export default function BastionSetupPage() {
   const { token } = useAuth()
   const [teleportDomain, setTeleportDomain] = useState('hpc.local')
   const [teleportEmail, setTeleportEmail] = useState('admin@hpc.local')
-  const [adminIp, setAdminIp] = useState('192.168.10.100')
+  const [adminIp, setAdminIp] = useState('192.168.10.207')
   
   const [isRunning, setIsRunning] = useState(false)
   const [isFinished, setIsFinished] = useState(false)
