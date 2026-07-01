@@ -67,7 +67,19 @@ Once you log into the Web App, you will use the new dropdown menu under **Admini
 > It will also bind `192.168.20.1` and `192.168.30.1` to the Master Node's physical port via NetworkManager aliasing.
 > Finally, it will lock down SSH on the Master Node so that **only the Bastion Host** can SSH into it.
 
-### C. Compute / Dev Nodes (The Physical DHCP Toggle)
+### C. Identity & Access Setup (Keycloak & OOD)
+The Master Node is now active, but Keycloak needs to be bootstrapped and connected to Open OnDemand.
+1. The backend automatically hits the Keycloak Admin REST API to create the `hpc` realm and register Open OnDemand.
+2. The backend then installs the Open OnDemand RPMs on the Master Node and configures Apache (`mod_auth_openidc`) to authenticate against the new Keycloak instance.
+3. Node Exporter is installed on the Master Node so the Bastion's Prometheus can scrape telemetry.
+
+### D. Teleport Gateway Configuration
+By default, Teleport conflicts with the Management Dashboard on port 443. 
+1. The backend automatically generates `/etc/teleport.yaml` to bind Teleport to port `3080`.
+2. The Bastion firewall is automatically updated to open port `3080` to your admin IP.
+3. Access Teleport at `https://192.168.10.200:3080`.
+
+### E. Compute / Dev Nodes (The Physical DHCP Toggle)
 Because Warewulf's DHCP server on the Master Node is now active, you must perform your physical toggle workflow to PXE boot the diskless clients safely.
 
 1. Go to **Administration -> Compute Setup** and build your Golden Image (if you haven't already).

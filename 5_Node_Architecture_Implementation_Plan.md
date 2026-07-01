@@ -81,6 +81,20 @@ The Web App relies on Ansible playbooks in the `scripts/ansible/` folder to do t
         *   **Restrict SSH (Port 22):** Apply a rich rule to **ONLY allow the Bastion Host (`192.168.10.200`) to SSH into the Master Node.**
         *   *Note on Dev Node:* **No**, the Dev Node does NOT need SSH access to the Master. The Dev node talks to the Master via Slurm's dedicated ports and NFS. Blocking Dev Node SSH access to the Master is a critical security best practice to prevent a compromised user session from hacking the control plane.
 
+### Phase 5: Service Integration & Routing (Day 2 Operations)
+The base infrastructure is deployed in Phases 1-4. This phase connects the decoupled services and finalizes configuration.
+
+1.  **Teleport Gateway (Port 3080):**
+    *   Teleport natively conflicts with Nginx on port 443. We configure `teleport.yaml` to bind to port `3080`.
+    *   Firewall: Open port 3080 on the Bastion Host. Access Teleport UI via `https://<bastion-ip>:3080`.
+2.  **Keycloak Realm Bootstrapping (Master Node):**
+    *   The `master.py` backend script must utilize the Keycloak Admin REST API to authenticate as `admin`, create the `hpc` realm, and register the Open OnDemand OIDC client credentials.
+3.  **Open OnDemand (OOD) OIDC Integration:**
+    *   Install the `ondemand` RPM on the Master Node.
+    *   Configure Apache's `ood_portal.yml` with the Keycloak Issuer URL, Client ID, and Secret generated in the previous step.
+4.  **Telemetry (Prometheus):**
+    *   Install Node Exporter on the Master Node.
+    *   Configure the Bastion Host's Prometheus `prometheus.yml` to scrape `192.168.10.2:9100` to feed the Grafana Dashboards.
 ---
 
 ## 3. The End-to-End User Experience (How you will use it)

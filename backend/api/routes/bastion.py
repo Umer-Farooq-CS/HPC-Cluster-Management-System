@@ -55,6 +55,7 @@ async def deploy_bastion_ws(websocket: WebSocket, token: str = Query(None)):
         systemctl enable --now firewalld 2>&1
         firewall-cmd --permanent --zone=public --add-service=http 2>&1
         firewall-cmd --permanent --zone=public --add-service=https 2>&1
+        firewall-cmd --permanent --zone=public --add-port=3080/tcp 2>&1
         firewall-cmd --permanent --zone=public --remove-service=ssh 2>&1 || true
         firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="{cfg.adminIp}" port protocol="tcp" port="22" accept' 2>&1
         firewall-cmd --permanent --zone=trusted --add-source=172.16.0.0/12 2>&1 || true
@@ -64,7 +65,7 @@ async def deploy_bastion_ws(websocket: WebSocket, token: str = Query(None)):
         await run_and_check(firewall_cmd, "Step 1 (Firewalld)")
         
         await websocket.send_text("[STEP 2] Installing Teleport Gateway...")
-        teleport_cmd = """
+        teleport_cmd = f"""
         if ! command -v teleport &> /dev/null; then
             echo "[INFO] Downloading Teleport..."
             curl -O https://cdn.teleport.dev/teleport-15.1.1-1.x86_64.rpm 2>&1 || echo "Could not download Teleport (Offline?)"
@@ -72,6 +73,32 @@ async def deploy_bastion_ws(websocket: WebSocket, token: str = Query(None)):
         else
             echo "[INFO] Teleport is already installed."
         fi
+        
+        echo "[INFO] Configuring Teleport on port 3080..."
+        cat << 'EOF' > /etc/teleport.yaml
+version: v3
+teleport:
+  nodename: bastion
+  data_dir: /var/lib/teleport
+  log:
+    output: stderr
+    severity: INFO
+auth_service:
+  enabled: "yes"
+  listen_addr: 0.0.0.0:3025
+  cluster_name: {cfg.teleportDomain}
+ssh_service:
+  enabled: "yes"
+  labels:
+    env: hpc
+proxy_service:
+  enabled: "yes"
+  web_listen_addr: 0.0.0.0:3080
+  public_addr: {cfg.teleportDomain}:3080
+  acme:
+    enabled: "no"
+EOF
+        systemctl enable --now teleport 2>&1 || true
         """
         await run_and_check(teleport_cmd, "Step 2 (Teleport)")
         
