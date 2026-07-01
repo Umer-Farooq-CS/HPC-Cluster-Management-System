@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     MASTER_PASS: str = "hpc"
     SSH_STRICT_HOST_KEY_CHECKING: bool = False
     
+    # Bastion Host SSH Credentials
+    BASTION_IP: str = "192.168.10.200"
+    BASTION_USER: str = "root"
+    BASTION_PASS: str = "host"
+    
     # Cluster Network Configuration
     DATA_IP: str = "192.168.30.1"
     PROV_NETWORK: str = "192.168.20.0"

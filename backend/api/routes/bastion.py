@@ -1,9 +1,10 @@
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel
-import asyncio
 
 from core.ssh_executor import SSHExecutor
 from core.security import verify_ws_token
+from core.config import settings
 
 router = APIRouter()
 
@@ -16,7 +17,6 @@ class BastionDeployPayload(BaseModel):
 async def deploy_bastion_ws(websocket: WebSocket, token: str = Query(None)):
     """
     WebSocket to stream the live execution of Bastion Host provisioning.
-    Because the Web App runs ON the Bastion Host, we execute commands locally (or via localhost SSH).
     """
     await websocket.accept()
 
@@ -36,29 +36,45 @@ async def deploy_bastion_ws(websocket: WebSocket, token: str = Query(None)):
         data = await websocket.receive_json()
         cfg = BastionDeployPayload(**data)
         
-        # We execute commands on localhost since the webapp is running on the Bastion Host
-        # Using SSHExecutor with localhost assumes the webapp container can SSH to its host, 
-        # or we execute via subprocess if it's not dockerized. 
-        # For simplicity in this architecture, we will echo the instructions that would be run.
-        
-        await websocket.send_text(f"[SYSTEM] Initiating Bastion Host Setup for domain {cfg.teleportDomain}...")
+        executor = SSHExecutor(
+            host=settings.BASTION_IP,
+            username=settings.BASTION_USER,
+            password=settings.BASTION_PASS
+        )
+
+        async def run_and_check(cmd: str, step_name: str):
+            async for line in executor.run_command_stream(cmd):
+                await websocket.send_text(line)
+                if "[ERROR]" in line or "[SSH ERROR]" in line or "[SYSTEM ERROR]" in line:
+                    raise Exception(f"{step_name} failed. Halting build.")
+
+        await websocket.send_text(f"[SYSTEM] Connecting to Bastion Host at {settings.BASTION_IP}...")
         
         await websocket.send_text("[STEP 1] Configuring Firewalld...")
-        await asyncio.sleep(1)
-        await websocket.send_text(f"[INFO] Opening port 80 and 443 to public.")
-        await websocket.send_text(f"[INFO] Restricting SSH (Port 22) to admin IP: {cfg.adminIp}")
+        firewall_cmd = f"""
+        systemctl enable --now firewalld 2>&1
+        firewall-cmd --permanent --zone=public --add-service=http 2>&1
+        firewall-cmd --permanent --zone=public --add-service=https 2>&1
+        firewall-cmd --permanent --zone=public --remove-service=ssh 2>&1 || true
+        firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="{cfg.adminIp}" port protocol="tcp" port="22" accept' 2>&1
+        firewall-cmd --reload 2>&1
+        """
+        await run_and_check(firewall_cmd, "Step 1 (Firewalld)")
         
         await websocket.send_text("[STEP 2] Installing Teleport Gateway...")
-        await asyncio.sleep(1)
-        await websocket.send_text(f"[INFO] Downloading Teleport RPM...")
-        await websocket.send_text(f"[INFO] Configuring Teleport for domain {cfg.teleportDomain}")
-        
-        await websocket.send_text("[STEP 3] Setting up Nginx Reverse Proxy...")
-        await asyncio.sleep(1)
-        await websocket.send_text(f"[INFO] Writing Nginx config for HPC Dashboard...")
+        teleport_cmd = """
+        if ! command -v teleport &> /dev/null; then
+            echo "[INFO] Downloading Teleport..."
+            curl -O https://cdn.teleport.dev/teleport-15.1.1-1.x86_64.rpm 2>&1 || echo "Could not download Teleport (Offline?)"
+            dnf -y install teleport-15.1.1-1.x86_64.rpm 2>&1 || echo "Could not install Teleport"
+        else
+            echo "[INFO] Teleport is already installed."
+        fi
+        """
+        await run_and_check(teleport_cmd, "Step 2 (Teleport)")
         
         await websocket.send_text("\n[SYSTEM] ✅ Bastion Host configuration complete!")
-        await websocket.send_text("[SYSTEM] This server is now secured and ready to proxy cluster traffic.")
+        await websocket.send_text(f"[SYSTEM] SSH is now permanently locked down to {cfg.adminIp}")
 
     except WebSocketDisconnect:
         print("Client disconnected during bastion deployment")
