@@ -166,11 +166,17 @@ with open("/etc/warewulf/warewulf.conf", "r") as f:
 
 conf["ipaddr"] = "{cfg.provIp}"
 conf["netmask"] = "{cfg.wwNetmask}"
+conf["network"] = "{cfg.wwProvNetwork}"
+if "warewulf" not in conf:
+    conf["warewulf"] = {{}}
 conf["warewulf"]["port"] = 9873
+if "dhcp" not in conf:
+    conf["dhcp"] = {{}}
 conf["dhcp"]["enabled"] = True
 conf["dhcp"]["range start"] = "{cfg.wwDhcpStart}"
 conf["dhcp"]["range end"] = "{cfg.wwDhcpEnd}"
 conf["dhcp"]["systemd name"] = "dhcpd"
+conf["dhcp"]["template"] = "{cfg.wwDhcpTemplate}"
 
 with open("/etc/warewulf/warewulf.conf", "w") as f:
     yaml.dump(conf, f, default_flow_style=False)

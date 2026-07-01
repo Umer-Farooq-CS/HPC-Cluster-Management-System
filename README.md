@@ -57,6 +57,11 @@ To fully understand, deploy, and extend this system, please consult the deep-div
 | [07. Developer Guide](./official_docs/07_Developer_Guide.md) | Instructions on extending the React and FastAPI codebases and utilizing the WebSocket pipeline. |
 | [08. Technology Stack](./official_docs/08_Technology_Stack.md) | An exhaustive inventory of every technology implemented and the architectural rationale behind it. |
 | [09. Security, Networking & Storage](./official_docs/09_Security_Networking_and_Storage.md) | Deep dive into systemd NFS automounts, NAT firewalls, and custom SELinux policy modules. |
+| [10. Lmod and Spack Guide](./official_docs/10_Lmod_and_Spack_Guide.md) | Detailed instructions on compiler toolchains, scientific libraries, Lmod env-modules and Spack profiles. |
+| [11. Network Access & SSH Hardening](./official_docs/11_Building_Network_Access_and_SSH_Hardening.md) | Security policy implementation for building network access control, firewall rich rules, and SSH keys. |
+| [12. Environment Profile Management](./official_docs/12_Environment_Profile_Management.md) | Complete user guide on managing environment stacks, dynamic module discovery, and custom user shell environments. |
+| [13. Hardware Telemetry & Grafana](./official_docs/13_Hardware_Telemetry_and_Grafana.md) | Deep-dive telemetry collection guide with Prometheus node exporters, custom scrapers, and Grafana integration. |
+| [14. Hardware Reconfiguration & App Server](./official_docs/14_Hardware_Reconfiguration_and_App_Server_Integration.md) | In-depth hardware upgrade plan, architectural options, authentication layers, Teleport configuration, and resource capping. |
 
 ---
 
