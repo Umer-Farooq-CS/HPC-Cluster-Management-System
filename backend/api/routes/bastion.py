@@ -57,6 +57,8 @@ async def deploy_bastion_ws(websocket: WebSocket, token: str = Query(None)):
         firewall-cmd --permanent --zone=public --add-service=https 2>&1
         firewall-cmd --permanent --zone=public --remove-service=ssh 2>&1 || true
         firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="{cfg.adminIp}" port protocol="tcp" port="22" accept' 2>&1
+        firewall-cmd --permanent --zone=trusted --add-source=172.16.0.0/12 2>&1 || true
+        firewall-cmd --permanent --zone=trusted --add-source=127.0.0.0/8 2>&1 || true
         firewall-cmd --reload 2>&1
         """
         await run_and_check(firewall_cmd, "Step 1 (Firewalld)")

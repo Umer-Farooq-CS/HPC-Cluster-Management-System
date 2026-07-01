@@ -35,6 +35,7 @@ export default function BastionSetupPage() {
     setLogs(['[SYSTEM] Opening WebSocket to Bastion deployment engine...'])
 
     const ws = new WebSocket(`wss://${window.location.hostname}/api/v1/bastion/deploy/ws?token=${token}`)
+    let hasError = false
 
     ws.onopen = () => {
       setLogs(prev => [...prev, '[SYSTEM] Connected — sending provisioning configurations...'])
@@ -43,17 +44,23 @@ export default function BastionSetupPage() {
 
     ws.onerror = () => {
       setLogs(prev => [...prev, '[SYSTEM ERROR] WebSocket connection failed. Please ensure the backend is running.'])
+      hasError = true
       setIsRunning(false)
     }
 
     ws.onmessage = (event) => {
       const message = event.data
       setLogs(prev => [...prev, message])
+      if (message.includes('[CRITICAL ERROR]')) {
+        hasError = true
+      }
     }
 
     ws.onclose = () => {
       setIsRunning(false)
-      setIsFinished(true)
+      if (!hasError) {
+        setIsFinished(true)
+      }
     }
   }
 
