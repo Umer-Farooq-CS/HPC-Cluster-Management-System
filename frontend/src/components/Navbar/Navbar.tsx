@@ -80,6 +80,7 @@ export default function Navbar() {
                     <li>
                       <Link to="/provision/slave" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/provision/slave' ? styles.dropdownItemActive : ''}`}>Compute Setup</Link>
                     </li>
+                    <li style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0' }}></li>
                     <li>
                       <Link to="/users" onClick={handleDropdownLinkClick} className={`${styles.dropdownItem} ${pathname === '/users' ? styles.dropdownItemActive : ''}`}>User Management</Link>
                     </li>
@@ -91,6 +92,9 @@ export default function Navbar() {
               </li>
               <li>
                 <Link to="/cluster-info" className={`${styles.link} ${pathname === '/cluster-info' ? styles.linkActive : ''}`}>Cluster Info</Link>
+              </li>
+              <li>
+                <a href={`https://${window.location.hostname}:3080`} target="_blank" rel="noopener noreferrer" className={styles.link} style={{ color: 'var(--accent-primary)' }}>Teleport ↗</a>
               </li>
             </>
           )}
