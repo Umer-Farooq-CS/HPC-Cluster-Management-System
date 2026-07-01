@@ -8,7 +8,7 @@ export const DEFAULT_MASTER_CONFIG: MasterConfig = {
   provIp: '192.168.20.1',
   provIpCidr: 24,
   gateway: '192.168.10.1',
-  dnsServers: '192.168.18.8',
+  dnsServers: '8.8.8.8 192.168.18.8',
   
   disableFirewall: true,
   enableCrb: true,
