@@ -179,10 +179,10 @@ export default function MasterSetupPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                 <button 
                   className={`${styles.btn} ${styles.btnPrimary}`} 
-                  style={{ width: '100%', background: '#10b981', borderColor: '#10b981' }}
+                  style={{ width: '100%', background: '#10b981', boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)' }}
                   onClick={() => navigate('/provision/slave')}
                 >
-                  🚀 Proceed to Slave Nodes
+                  Proceed to Slave Nodes ➔
                 </button>
                 <button 
                   className={`${styles.btn} ${styles.btnSecondary}`} 
